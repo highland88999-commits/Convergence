@@ -3,63 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KRONOS // RECLAMATION</title>
+    <title>KRONOS // SYNC FOUNDATION</title>
     <style>
-        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.5); --pink: #ff0055; }
+        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.3); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* THE FOUNDATION - FORCED VISIBILITY */
+        /* THE STAGE - ZERO BLOCKING */
         body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
         
-        #bg-media-container {
+        #media-deck {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -2; display: flex; align-items: center; justify-content: center;
-            background: #000;
+            z-index: -2; background: #000; display: flex; justify-content: center; align-items: center;
         }
 
-        #bg-video, #bg-image {
+        video#bg-video, img#bg-image {
             position: absolute; width: 100%; height: 100%; object-fit: cover;
-            transition: opacity 1.5s ease-in-out; opacity: 0;
+            display: none; opacity: 0; transition: opacity 1.2s ease;
         }
 
-        #dimmer { 
+        canvas#mainCanvas { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0, 0, 0, 0.2); z-index: -1; pointer-events: none;
+            z-index: 1; background: transparent !important; pointer-events: auto;
         }
 
-        canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: transparent; }
-
-        /* HUD */
         #hud { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 95%; max-width: 600px; z-index: 100; display: flex; flex-direction: column; gap: 10px;
-            background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 243, 255, 0.2);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            width: 95%; max-width: 600px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
+            background: var(--glass); padding: 18px; border-radius: 20px; border: 1px solid rgba(0, 243, 255, 0.1);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         }
 
         .row { display: flex; gap: 8px; }
         .btn { 
-            flex: 1; background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(0, 243, 255, 0.4); 
-            color: var(--neon); padding: 14px 2px; border-radius: 10px; font-size: 8px; font-weight: 900; 
-            cursor: pointer; text-transform: uppercase; text-align: center;
+            flex: 1; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(0, 243, 255, 0.3); 
+            color: var(--neon); padding: 14px 2px; border-radius: 12px; font-size: 8px; font-weight: 900; 
+            cursor: pointer; text-transform: uppercase; text-align: center; letter-spacing: 1px;
         }
-        .btn.active { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
+        .btn.active { background: var(--neon); color: #000; box-shadow: 0 0 15px var(--neon); }
         input { display: none; }
-        #status { font-size: 9px; color: var(--neon); letter-spacing: 2px; margin-bottom: 5px; }
+        #status { font-size: 9px; color: var(--neon); letter-spacing: 3px; margin-bottom: 4px; text-shadow: 0 0 5px var(--neon); }
     </style>
 </head>
 <body>
 
-    <div id="bg-media-container">
+    <div id="media-deck">
         <video id="bg-video" playsinline loop muted></video>
-        <img id="bg-image" alt="background memory">
-        <div id="dimmer"></div>
+        <img id="bg-image" alt="memory-visual">
     </div>
 
     <canvas id="mainCanvas"></canvas>
 
     <div id="hud">
-        <div id="status">// KRONOS: STANDBY_READY</div>
+        <div id="status">// KRONOS: SYNC_ESTABLISHED</div>
         <div class="row">
             <label for="mem-up" class="btn">LOAD MEMORY</label>
             <input type="file" id="mem-up" accept="video/*,image/*">
@@ -85,7 +80,7 @@
         import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 
         let audioCtx, analyser, dataArray, prioritySource = null;
-        let bass = 0, avg = 0, treble = 0, userHue = 185;
+        let bass = 0, avg = 0, userHue = 185;
         let isVortex = false, isSling = false;
         let rotX = 0, rotY = 0, lastPos = { x: 0, y: 0 };
 
@@ -97,20 +92,20 @@
 
         const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('mainCanvas'), antialias: false, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0); 
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.4, 0.1);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.2, 0.4, 0.1);
         composer.addPass(bloom);
 
         const pCount = 2000;
         const hPoints = Array.from({ length: pCount }, () => Array.from({ length: 8 }, () => (Math.random() - 0.5) * 4.5));
         const geo = new THREE.BufferGeometry();
-        const mat = new THREE.PointsMaterial({ size: 0.06, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
+        const mat = new THREE.PointsMaterial({ size: 0.07, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
         const swarm = new THREE.Points(geo, mat);
         scene.add(swarm);
 
-        // --- AUDIO ENGINE ---
         async function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -121,42 +116,41 @@
             if (audioCtx.state === 'suspended') await audioCtx.resume();
         }
 
-        function routeSource(source, label) {
+        function route(source, label) {
             if (prioritySource) prioritySource.disconnect();
             source.connect(analyser);
             source.connect(audioCtx.destination);
             prioritySource = source;
-            document.getElementById('status').innerText = `// KRONOS: ${label}_ACTIVE`;
+            document.getElementById('status').innerText = `// ENGINE: ${label}_SYNC`;
         }
 
-        // --- MEMORY LOADER (IMAGE & VIDEO) ---
+        // --- MEMORY ENGINE (IMAGE & VIDEO) ---
         document.getElementById('mem-up').onchange = async (e) => {
             await initAudio();
             const file = e.target.files[0];
             const url = URL.createObjectURL(file);
             
-            // State Fade
-            vid.style.opacity = 0;
-            img.style.opacity = 0;
+            // Shutter Effect
+            vid.style.opacity = 0; img.style.opacity = 0;
 
             setTimeout(() => {
                 if (file.type.startsWith('video')) {
                     img.style.display = 'none';
                     vid.style.display = 'block';
                     vid.src = url;
-                    vid.muted = false;
-                    vid.play();
+                    vid.muted = false; // Ensure volume is up
+                    vid.play().catch(err => console.log("Video Play Blocked: ", err));
                     vid.style.opacity = 1;
                     const source = audioCtx.createMediaElementSource(vid);
-                    routeSource(source, "VIDEO_MEMORY");
+                    route(source, "VIDEO_MEMORY");
                 } else {
                     vid.style.display = 'none';
                     img.style.display = 'block';
                     img.src = url;
                     img.style.opacity = 1;
-                    document.getElementById('status').innerText = `// KRONOS: IMAGE_MEMORY_LOADED`;
+                    document.getElementById('status').innerText = `// ENGINE: IMAGE_LOADED`;
                 }
-            }, 500);
+            }, 400);
         };
 
         document.getElementById('aud-up').onchange = async (e) => {
@@ -164,15 +158,7 @@
             const audio = new Audio(URL.createObjectURL(e.target.files[0]));
             audio.play();
             const source = audioCtx.createMediaElementSource(audio);
-            routeSource(source, "SONIC_CORE");
-        };
-
-        document.getElementById('micBtn').onclick = async () => {
-            await initAudio();
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const source = audioCtx.createMediaStreamSource(stream);
-            routeSource(source, "MIC_LIVE");
-            document.getElementById('micBtn').classList.add('active');
+            route(source, "SONIC_CORE");
         };
 
         // --- INTERACTION ---
@@ -194,7 +180,10 @@
             requestAnimationFrame(animate);
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
-                bass = dataArray[2]/255; avg = dataArray[128]/255;
+                let currentBass = dataArray[2]/255;
+                // Weighted Reactivity (Prevents "Forced" jitter)
+                bass += (currentBass - bass) * 0.15; 
+                avg = (dataArray[128]/255);
                 bloom.strength = 1.0 + bass * 3.5;
             }
 
@@ -202,32 +191,32 @@
             const colA = new Float32Array(pCount * 3);
 
             hPoints.forEach((p, i) => {
-                let r = performance.now() * 0.0006 * (1 + (i%2 ? bass : avg));
+                let r = performance.now() * 0.0005 * (1 + (i%2 ? bass : avg));
                 let x = p[0] * Math.cos(r + rotY) - p[1] * Math.sin(r + rotY);
                 let y = p[0] * Math.sin(r + rotY) + p[1] * Math.cos(r + rotY);
                 let z = p[2] * Math.cos(rotX);
 
                 if (isVortex) {
                     let d = Math.sqrt(x*x + y*y);
-                    let vAngle = (bass * 5.0) * (1.8 / (d + 0.5));
+                    let vAngle = (bass * 6.0) * (2.0 / (d + 0.4));
                     let vx = x * Math.cos(vAngle) - y * Math.sin(vAngle);
                     y = x * Math.sin(vAngle) + y * Math.cos(vAngle);
                     x = vx;
                 }
 
-                let expand = isSling ? 1.7 : 1.0;
-                const s = (Math.abs(p[5]) * 0.4 + 0.6) * expand * (1 + bass * 0.2);
-                posA[i*3] = x * 4.2 * s; 
-                posA[i*3+1] = y * 4.2 * s; 
-                posA[i*3+2] = (z + p[4]) * 4.2 * s;
+                let expand = isSling ? 1.8 : 1.0;
+                const s = (Math.abs(p[5]) * 0.4 + 0.6) * expand * (1 + bass * 0.3);
+                posA[i*3] = x * 4.3 * s; 
+                posA[i*3+1] = y * 4.3 * s; 
+                posA[i*3+2] = (z + p[4]) * 4.3 * s;
 
-                const rgb = hslToRgb(((userHue + bass*40)%360)/360, 0.9, 0.7);
+                const rgb = hslToRgb(((userHue + bass*45)%360)/360, 0.9, 0.75);
                 colA[i*3] = rgb[0]; colA[i*3+1] = rgb[1]; colA[i*3+2] = rgb[2];
             });
 
             geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colA, 3));
-            rotX *= 0.93; rotY *= 0.93;
+            rotX *= 0.94; rotY *= 0.94; // Decay for smooth sling
             composer.render();
         }
 
