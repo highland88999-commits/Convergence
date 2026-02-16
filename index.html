@@ -3,58 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KRONOS // THE RECLAMATION</title>
+    <title>KRONOS // FOUNDATION</title>
     <style>
-        :root { --neon-cyan: #00f3ff; --glass: rgba(0, 0, 0, 0.7); --olympus: #ffd700; }
+        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.75); }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
         
-        #stage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        /* The Video Foundation */
+        #video-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2; overflow: hidden; background: #000;
+        }
         
         video#bg-video { 
-            position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; 
-            width: auto; height: auto; transform: translate(-50%, -50%); 
-            object-fit: cover; z-index: -2; display: block;
+            position: absolute; top: 50%; left: 50%; 
+            min-width: 100%; min-height: 100%; 
+            width: auto; height: auto; 
+            transform: translate(-50%, -50%); 
+            object-fit: cover;
+            /* Placeholder state starts visible */
+            opacity: 0.8; 
+            transition: opacity 2s ease;
         }
 
         #dimmer { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0, 0, 0, 0.3); z-index: -1; pointer-events: none; 
+            background: rgba(0, 0, 0, 0.35); z-index: -1; pointer-events: none; 
         }
 
-        canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: auto; }
+        canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
+        /* HUD */
         #hud { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 500px; z-index: 100; display: flex; flex-direction: column; gap: 12px;
-            background: var(--glass); padding: 20px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.15);
-            backdrop-filter: blur(10px);
+            width: 92%; max-width: 500px; z-index: 100; display: flex; flex-direction: column; gap: 10px;
+            background: var(--glass); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         }
 
-        .row { display: flex; gap: 10px; }
+        .row { display: flex; gap: 8px; }
         .btn { 
-            flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); 
-            color: #fff; padding: 14px 5px; border-radius: 12px; font-size: 9px; font-weight: 900; 
-            cursor: pointer; text-transform: uppercase; text-align: center; transition: 0.2s;
+            flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); 
+            color: #fff; padding: 14px 2px; border-radius: 12px; font-size: 8px; font-weight: 900; 
+            cursor: pointer; text-transform: uppercase; text-align: center;
         }
-        .btn.active { border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan); }
+        .btn.active { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 15px var(--neon); }
         
         input { display: none; }
-        #status { font-size: 8px; color: var(--neon-cyan); text-align: center; letter-spacing: 3px; margin-bottom: 5px; }
+        #status { font-size: 8px; color: var(--neon); text-align: center; letter-spacing: 3px; margin-bottom: 5px; opacity: 0.7; }
     </style>
 </head>
 <body>
 
-    <div id="stage">
-        <video id="bg-video" playsinline loop muted></video>
+    <div id="video-container">
+        <video id="bg-video" playsinline loop muted autoplay 
+               src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-loop-with-blue-lights-40244-large.mp4">
+        </video>
         <div id="dimmer"></div>
-        <canvas id="mainCanvas"></canvas>
     </div>
 
+    <canvas id="mainCanvas"></canvas>
+
     <div id="hud">
-        <div id="status">KRONOS // SYSTEM_READY</div>
+        <div id="status">KRONOS // FOUNDATION_ACTIVE</div>
         <div class="row">
-            <label for="vid-up" class="btn">LOAD MEMORY</label>
+            <label for="vid-up" class="btn">SWAP MEMORY</label>
             <input type="file" id="vid-up" accept="video/*">
             
             <label for="aud-up" class="btn">SONIC CORE</label>
@@ -66,7 +79,7 @@
             <label for="color-picker" class="btn" id="tint-label">TINT SWARM</label>
             <input type="color" id="color-picker" value="#00f3ff">
             
-            <button id="micBtn" class="btn">MIC</button>
+            <button id="micBtn" class="btn">MIC SYNC</button>
             <button id="recordBtn" class="btn" style="color: #ff0055; border-color: #ff0055;">CAPTURE</button>
         </div>
     </div>
@@ -92,14 +105,14 @@
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.2, 0.4, 0.1);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.4, 0.1);
         composer.addPass(bloom);
 
-        // --- THE 8D SWARM ENGINE ---
-        const pCount = 2400;
-        const hPoints = Array.from({ length: pCount }, () => Array.from({ length: 8 }, () => (Math.random() - 0.5) * 4.0));
+        // --- THE 8D SWARM ---
+        const pCount = 2500;
+        const hPoints = Array.from({ length: pCount }, () => Array.from({ length: 8 }, () => (Math.random() - 0.5) * 4.2));
         const geo = new THREE.BufferGeometry();
-        const mat = new THREE.PointsMaterial({ size: 0.07, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
+        const mat = new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
         const swarm = new THREE.Points(geo, mat);
         scene.add(swarm);
 
@@ -116,14 +129,16 @@
             document.getElementById('status').innerText = `KRONOS // ACTIVE: ${label}`;
         }
 
+        // Handle swapping the placeholder for a user memory
         document.getElementById('vid-up').onchange = (e) => {
             const file = e.target.files[0];
+            if (!file) return;
             video.src = URL.createObjectURL(file);
-            video.onloadeddata = () => { video.play(); video.style.opacity = 1; };
+            video.play();
             const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
             const source = ctx.createMediaElementSource(video);
             source.connect(ctx.destination);
-            if (!prioritySource) setupAudio(source, "MEMORY_STREAM");
+            if (!prioritySource) setupAudio(source, "USER_MEMORY");
         };
 
         document.getElementById('aud-up').onchange = (e) => {
@@ -149,7 +164,7 @@
         document.getElementById('micBtn').onclick = async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const source = (audioCtx || new AudioContext()).createMediaStreamSource(stream);
-            setupAudio(source, "MIC_SYNC");
+            setupAudio(source, "LIVE_MIC");
             document.getElementById('micBtn').classList.add('active');
         };
 
@@ -160,36 +175,35 @@
                 bass = dataArray[2]/255; 
                 avg = dataArray[128]/255; 
                 treble = dataArray[240]/255;
-                bloom.strength = 1.2 + (bass * 3.5);
+                bloom.strength = 1.0 + (bass * 3.0);
             }
 
             const posA = new Float32Array(pCount * 3);
             const colA = new Float32Array(pCount * 3);
 
             hPoints.forEach((p, i) => {
-                let time = performance.now() * 0.0008;
+                let time = performance.now() * 0.0007;
                 let r = time * (1 + (i%2 ? bass : avg));
                 
-                // 8D Projection Logic
                 let x = p[0] * Math.cos(r) - p[1] * Math.sin(r);
                 let y = p[0] * Math.sin(r) + p[1] * Math.cos(r);
-                let z = p[2] * Math.cos(r*0.5);
+                let z = p[2] * Math.cos(r*0.4);
 
                 if (isVortex) {
                     let d = Math.sqrt(x*x + y*y);
-                    let flow = (bass * 2.8) - (treble * 1.2);
-                    let vAngle = flow * (1.2 / (d + 0.5));
+                    let flow = (bass * 3.0) - (treble * 1.5);
+                    let vAngle = flow * (1.5 / (d + 0.6));
                     let vx = x * Math.cos(vAngle) - y * Math.sin(vAngle);
                     y = x * Math.sin(vAngle) + y * Math.cos(vAngle);
                     x = vx;
                 }
 
-                const scale = (Math.abs(p[5]) * 0.5 + 0.5) * (1 + bass * 0.2);
-                posA[i*3] = x * 4 * scale; 
-                posA[i*3+1] = y * 4 * scale; 
-                posA[i*3+2] = z * 4 * scale;
+                const scale = (Math.abs(p[5]) * 0.5 + 0.5) * (1 + bass * 0.25);
+                posA[i*3] = x * 4.5 * scale; 
+                posA[i*3+1] = y * 4.5 * scale; 
+                posA[i*3+2] = z * 4.5 * scale;
                 
-                colA[i*3] = pColor.r + (bass * 0.3);
+                colA[i*3] = pColor.r + (bass * 0.2);
                 colA[i*3+1] = pColor.g + (avg * 0.1);
                 colA[i*3+2] = pColor.b + (treble * 0.4);
             });
@@ -197,7 +211,7 @@
             geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colA, 3));
             
-            swarm.rotation.y += 0.001 + (avg * 0.02);
+            swarm.rotation.y += 0.001;
             composer.render();
         }
 
