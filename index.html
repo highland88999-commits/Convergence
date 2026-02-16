@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HYPERION GRAVITAS // VISUAL_SYNC</title>
+    <title>HYPERION // INVERSE_ZENITH</title>
     <style>
-        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.6); --pink: #ff0055; }
+        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.5); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         
         body {
@@ -14,80 +14,80 @@
             font-family: 'Courier New', monospace;
         }
 
-        /* --- LAYER 1: THE MEDIA DECK (VIDEO/IMAGE) --- */
+        /* LAYER 1: PARTICLES (BOTTOM) */
+        canvas#mainCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; /* Background Ambience */
+            pointer-events: auto; /* Allow interaction with background */
+        }
+
+        /* LAYER 2: SHADED OVERLAY (MIDDLE) */
+        #shade-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.65); /* Very transparent black shade */
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* LAYER 3: MEDIA (TOP) */
         #media-deck {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 5; /* Sit between background and particles */
+            z-index: 10; /* Top Priority */
             display: flex; justify-content: center; align-items: center;
             pointer-events: none;
         }
         video#bg-video, img#bg-image {
-            position: absolute; width: 100%; height: 100%; object-fit: cover;
-            display: none; opacity: 1; transition: opacity 0.5s ease;
+            max-width: 90%; max-height: 80%; /* Contained, not fullscreen stretch */
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.15); /* Soft glow edge */
+            display: none; opacity: 1;
+            border-radius: 8px;
         }
 
-        /* --- LAYER 2: THE PARTICLES (TRANSPARENT CANVAS) --- */
-        canvas#mainCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; background: transparent !important;
-            pointer-events: auto;
-        }
-
-        /* --- UI OVERLAY --- */
+        /* UI CONTROLS */
         #ui {
             position: absolute; top: 25px; left: 25px; z-index: 100;
-            color: var(--neon); text-transform: uppercase; letter-spacing: 3px;
-            font-size: 10px; text-shadow: 0 0 10px var(--neon); pointer-events: none;
-            opacity: 0.85; line-height: 1.8;
+            color: var(--neon); font-size: 10px; letter-spacing: 2px;
+            pointer-events: none; opacity: 0.9;
         }
 
         #controls {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 95%; max-width: 600px; z-index: 100;
+            width: 95%; max-width: 500px; z-index: 100;
             background: var(--glass); padding: 15px; border-radius: 12px;
             border: 1px solid rgba(0, 243, 255, 0.3);
-            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
         }
 
         .btn, .color-container {
-            background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(0, 243, 255, 0.3);
+            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(0, 243, 255, 0.3);
             color: var(--neon); padding: 12px; border-radius: 6px;
             cursor: pointer; text-transform: uppercase; font-size: 9px; font-weight: 800;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: all 0.2s ease;
         }
-        .btn:active, .color-container:active { background: var(--neon); color: #000; }
-        
-        input[type="file"], input[type="color"] { display: none; }
-        
-        .color-preview {
-            width: 12px; height: 12px; border-radius: 50%;
-            border: 1px solid #fff; background: var(--neon);
-            box-shadow: 0 0 5px var(--neon);
-        }
-
-        .glitch { animation: blink 1s step-end infinite; color: var(--pink); }
-        @keyframes blink { 50% { opacity: 0; } }
+        input { display: none; }
+        .color-preview { width: 12px; height: 12px; border-radius: 50%; background: var(--neon); border: 1px solid #fff; }
     </style>
 </head>
 <body>
 
+    <canvas id="mainCanvas"></canvas>
+
+    <div id="shade-overlay"></div>
+
     <div id="media-deck">
-        <video id="bg-video" playsinline loop crossorigin="anonymous"></video>
+        <video id="bg-video" playsinline loop crossorigin="anonymous" muted></video>
         <img id="bg-image" alt="Visual Memory">
     </div>
 
-    <canvas id="mainCanvas"></canvas>
-
     <div id="ui">
-        // HYPERION GRAVITAS v.FINAL<br>
-        // VISUAL: <span id="visual-status">VOID</span><br>
-        // AUDIO: <span id="sync-status" class="glitch">OFFLINE</span>
+        // HYPERION GRAVITAS v.INVERSE<br>
+        // VIDEO_LAYER: <span style="color:#ff0055">TOP_PRIORITY</span><br>
+        // AUDIO_MODE: <span id="audio-status">MUTED_DEFAULT</span>
     </div>
 
     <div id="controls">
-        <label for="visual-upload" class="btn">LOAD VISUAL</label>
+        <label for="visual-upload" class="btn">LOAD VIDEO</label>
         <input type="file" id="visual-upload" accept="video/*,image/*">
 
         <label for="audio-upload" class="btn">LOAD AUDIO</label>
@@ -107,14 +107,13 @@
         import { RenderPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 
-        let audioCtx, analyser, dataArray, sourceNode;
-        let bass = 0, avg = 0;
-        let userHue = 185; 
-        
-        // --- MEDIA HANDLING ---
+        let audioCtx, analyser, dataArray;
+        let bass = 0;
+        let userHue = 185;
+
+        // --- MEDIA LOGIC ---
         const vid = document.getElementById('bg-video');
         const img = document.getElementById('bg-image');
-        const visualStatus = document.getElementById('visual-status');
 
         document.getElementById('visual-upload').onchange = (e) => {
             const file = e.target.files[0];
@@ -122,100 +121,54 @@
             
             if (file.type.startsWith('video')) {
                 img.style.display = 'none'; vid.style.display = 'block';
-                vid.src = url; vid.muted = false; vid.play();
-                visualStatus.innerText = "VIDEO_MEMORY";
-                visualStatus.style.color = "#00f3ff";
-                
-                // Optional: Route video audio if no other audio exists
-                if (!audioCtx) initAudio();
+                vid.src = url; 
+                vid.muted = true; // FORCE MUTE
+                vid.play();
+                document.getElementById('audio-status').innerText = "VIDEO_MUTED";
             } else {
                 vid.style.display = 'none'; img.style.display = 'block';
                 img.src = url;
-                visualStatus.innerText = "IMAGE_STATIC";
             }
         };
 
-        // --- SCENE SETUP ---
+        // --- THREE.JS SETUP ---
         const scene = new THREE.Scene();
-        // scene.fog = new THREE.FogExp2(0x000000, 0.03); // Removed fog to keep video clear
-
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 11;
+        camera.position.z = 14;
 
-        // CRITICAL FIX: Alpha True, Premultiplied Alpha False
         const renderer = new THREE.WebGLRenderer({ 
-            canvas: document.getElementById('mainCanvas'),
-            antialias: true, 
-            alpha: true, 
-            premultipliedAlpha: false 
+            canvas: document.getElementById('mainCanvas'), 
+            antialias: true, alpha: true 
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x000000, 0); // Transparent Background
-
+        
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.5, 0.1);
-        composer.addPass(bloomPass);
+        // Higher bloom since it's behind a shaded layer
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.5, 0.6, 0.1);
+        composer.addPass(bloom);
 
-        // --- INTERACTION ---
-        let isDragging = false, lastMousePos = { x: 0, y: 0 };
-        let rotX = 0, rotY = 0;
+        // --- PARTICLES ---
+        const pCount = 1500;
+        const positions = new Float32Array(pCount * 3);
+        const colors = new Float32Array(pCount * 3);
+        const originalPos = [];
+
+        for(let i=0; i<pCount; i++) {
+            let x = (Math.random() - 0.5) * 15;
+            let y = (Math.random() - 0.5) * 15;
+            let z = (Math.random() - 0.5) * 10;
+            positions[i*3] = x; positions[i*3+1] = y; positions[i*3+2] = z;
+            originalPos.push({x, y, z});
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         
-        const onDown = (x, y) => { isDragging = true; lastMousePos = { x, y }; };
-        const onUp = () => { isDragging = false; };
-        const onMove = (x, y) => {
-            if (isDragging) {
-                rotY += (x - lastMousePos.x) * 0.005;
-                rotX += (y - lastMousePos.y) * 0.005;
-            }
-            lastMousePos = { x, y };
-        };
-
-        window.addEventListener('mousedown', e => onDown(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-        window.addEventListener('mouseup', onUp);
-        window.addEventListener('touchstart', e => onDown(e.touches[0].clientX, e.touches[0].clientY));
-        window.addEventListener('touchmove', e => onMove(e.touches[0].clientX, e.touches[0].clientY));
-        window.addEventListener('touchend', onUp);
-
-        // --- COLOR LOGIC ---
-        document.getElementById('color-picker').addEventListener('input', (e) => {
-            document.getElementById('preview').style.background = e.target.value;
-            const hsl = hexToHSL(e.target.value);
-            userHue = hsl.h;
-        });
-
-        function hexToHSL(hex) {
-            let r = parseInt(hex.slice(1,3), 16) / 255;
-            let g = parseInt(hex.slice(3,5), 16) / 255;
-            let b = parseInt(hex.slice(5,7), 16) / 255;
-            let max = Math.max(r, g, b), min = Math.min(r, g, b);
-            let h, s, l = (max + min) / 2;
-            if(max == min){ h = s = 0; } else {
-                let d = max - min;
-                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                switch(max){ case r: h = (g - b) / d + (g < b ? 6 : 0); break; case g: h = (b - r) / d + 2; break; case b: h = (r - g) / d + 4; break; }
-                h *= 60;
-            }
-            return { h, s, l };
-        }
-
-        // --- PARTICLES (GRAVITAS ENGINE) ---
-        const pointCount = 1800;
-        const hyperPoints = [];
-        for (let i = 0; i < pointCount; i++) {
-            hyperPoints.push({
-                x: (Math.random() - 0.5) * 5,
-                y: (Math.random() - 0.5) * 5,
-                z: (Math.random() - 0.5) * 5,
-                baseX: (Math.random() - 0.5) * 5
-            });
-        }
-
-        const geometry = new THREE.BufferGeometry();
-        const material = new THREE.PointsMaterial({ size: 0.06, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
-        const pointsMesh = new THREE.Points(geometry, material);
-        scene.add(pointsMesh);
+        const mat = new THREE.PointsMaterial({ size: 0.12, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
+        const swarm = new THREE.Points(geo, mat);
+        scene.add(swarm);
 
         // --- AUDIO ---
         async function initAudio() {
@@ -234,8 +187,7 @@
             audio.play();
             const src = audioCtx.createMediaElementSource(audio);
             src.connect(analyser); src.connect(audioCtx.destination);
-            document.getElementById('sync-status').innerText = "AUDIO_FILE";
-            document.getElementById('sync-status').classList.remove('glitch');
+            document.getElementById('audio-status').innerText = "AUDIO_ACTIVE";
         };
 
         document.getElementById('mic-btn').onclick = async () => {
@@ -243,65 +195,51 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const src = audioCtx.createMediaStreamSource(stream);
             src.connect(analyser);
-            document.getElementById('sync-status').innerText = "MIC_LIVE";
-            document.getElementById('sync-status').classList.remove('glitch');
+            document.getElementById('audio-status').innerText = "MIC_LIVE";
         };
 
-        // --- ANIMATION LOOP ---
+        // --- COLOR ---
+        document.getElementById('color-picker').addEventListener('input', (e) => {
+            document.getElementById('preview').style.background = e.target.value;
+            userHue = parseInt(e.target.value.slice(1), 16); 
+            // Simplified hex to hue calc for demo speed, relying on visual feedback
+        });
+
+        // --- ANIMATION ---
+        let rotY = 0;
         function animate() {
             requestAnimationFrame(animate);
+            
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
                 bass = dataArray[4] / 255;
-                avg = dataArray[40] / 255;
-                bloomPass.strength = 1.5 + (bass * 3.0);
+                bloom.strength = 1.5 + bass * 4.0; // Strong bloom to punch through shade
             }
 
-            // Smooth Rotation Deceleration
-            rotX *= 0.95; rotY *= 0.95;
-            pointsMesh.rotation.y += rotY + 0.002;
-            pointsMesh.rotation.x += rotX;
+            const p = geo.attributes.position.array;
+            const c = geo.attributes.color.array;
 
-            const pos = new Float32Array(pointCount * 3);
-            const col = new Float32Array(pointCount * 3);
-            let time = performance.now() * 0.0005;
+            swarm.rotation.y += 0.002 + (bass * 0.05);
 
-            hyperPoints.forEach((p, i) => {
-                // Audio Reactive Pulse
-                let pulse = 1 + (bass * 0.5);
+            for(let i=0; i<pCount; i++) {
+                // Breathing effect
+                let pulse = 1 + (Math.sin(performance.now() * 0.001 + i) * 0.05) + (bass * 0.4);
                 
-                // Vortex Logic
-                let x = p.x * pulse;
-                let y = p.y * pulse;
-                let z = p.z * pulse;
+                p[i*3] = originalPos[i].x * pulse;
+                p[i*3+1] = originalPos[i].y * pulse;
+                p[i*3+2] = originalPos[i].z * pulse;
 
-                // Color Logic
-                let h = (userHue + (bass * 40)) % 360;
-                let rgb = hslToRgb(h / 360, 1, 0.7);
+                // Color tint
+                c[i*3] = 0.1 + bass; // Red/Blue shift
+                c[i*3+1] = 0.8;
+                c[i*3+2] = 1.0;
+            }
 
-                pos[i*3] = x; pos[i*3+1] = y; pos[i*3+2] = z;
-                col[i*3] = rgb[0]; col[i*3+1] = rgb[1]; col[i*3+2] = rgb[2];
-            });
-
-            geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            geo.attributes.position.needsUpdate = true;
+            geo.attributes.color.needsUpdate = true;
 
             composer.render();
         }
-
-        function hslToRgb(h, s, l) {
-            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-            const p = 2 * l - q;
-            const f = (p, q, t) => {
-                if (t < 0) t += 1; if (t > 1) t -= 1;
-                if (t < 1/6) return p + (q - p) * 6 * t;
-                if (t < 1/2) return q;
-                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                return p;
-            };
-            return [f(p, q, h + 1/3), f(p, q, h), f(p, q, h - 1/3)];
-        }
-
         animate();
     </script>
 </body>
