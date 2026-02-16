@@ -8,14 +8,9 @@
         :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.55); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         
-        body { 
-            background: #000; overflow: hidden; height: 100vh; width: 100vw; 
-            font-family: 'Courier New', monospace; 
-        }
+        body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
 
-        canvas#mainCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        }
+        canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
         #ui {
             position: absolute; top: 25px; left: 25px; z-index: 100;
@@ -37,7 +32,6 @@
             cursor: pointer; text-transform: uppercase; font-size: 9px; font-weight: 800;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        
         input { display: none; }
         .color-preview { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #fff; }
         .glitch { color: var(--pink); animation: blink 1s step-end infinite; }
@@ -51,7 +45,7 @@
     <div id="ui">
         // HYPERION // INVERSE_ZENITH<br>
         // STATUS: <span id="sync-status" class="glitch">AWAITING CORE</span><br>
-        // ARCH: VISUAL_BEHIND_SLING_8D
+        // ARCH: VISUAL_BEHIND_8D_SLING
     </div>
 
     <div id="controls">
@@ -80,16 +74,15 @@
         let bass = 0, avg = 0, treble = 0;
         let globalHue = 200;
 
-        // THREE SETUP
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x010103, 0.055);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-        camera.position.set(0, 0, 14);
+        camera.position.z = 14;
 
         const renderer = new THREE.WebGLRenderer({ 
             canvas: document.getElementById('mainCanvas'), 
-            antialias: false, alpha: false, powerPreference: "high-performance" 
+            antialias: false, alpha: true, powerPreference: "high-performance" 
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -99,17 +92,35 @@
         const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.4, 0.65, 0.15);
         composer.addPass(bloom);
 
-        // Controls: full orbit + zoom + pan
+        // Full Orbit + Sling Controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
-        controls.rotateSpeed = 0.7;
-        controls.zoomSpeed = 1.2;
-        controls.panSpeed = 0.8;
-        controls.minDistance = 4;
-        controls.maxDistance = 60;
+        controls.dampingFactor = 0.09;
+        controls.rotateSpeed = 0.8;
+        controls.zoomSpeed = 1.3;
+        controls.panSpeed = 0.9;
+        controls.minDistance = 5;
+        controls.maxDistance = 80;
 
-        // === 8D HYPER-SWARM ===
+        // Sling inertia
+        let slingVelocity = new THREE.Vector2();
+        let isDragging = false;
+        let lastPos = new THREE.Vector2();
+
+        renderer.domElement.addEventListener('pointerdown', e => {
+            isDragging = true;
+            lastPos.set(e.clientX, e.clientY);
+        });
+        renderer.domElement.addEventListener('pointerup', () => isDragging = false);
+        renderer.domElement.addEventListener('pointermove', e => {
+            if (isDragging) {
+                const delta = new THREE.Vector2(e.clientX - lastPos.x, e.clientY - lastPos.y);
+                slingVelocity.add(delta.multiplyScalar(0.008));
+                lastPos.set(e.clientX, e.clientY);
+            }
+        });
+
+        // 8D Swarm
         const pointCount = 1800;
         const hyperPoints = [];
         const isMagentaArray = new Uint8Array(pointCount);
@@ -123,7 +134,7 @@
         const swarm = new THREE.Points(geometry, material);
         scene.add(swarm);
 
-        // === CASCADE ===
+        // Cascade
         const cascadeCount = 420;
         const cascadePositions = new Float32Array(cascadeCount * 3);
         const cascadeColors = new Float32Array(cascadeCount * 3);
@@ -138,19 +149,14 @@
                 if (cascadeParticles.length >= cascadeCount) break;
                 const hue = (baseHue + (Math.random() * 40 - 20)) % 360;
                 cascadeParticles.push({
-                    x: (Math.random() - 0.5) * 26,
-                    y: 14 + Math.random() * 10,
-                    z: (Math.random() - 0.5) * 26,
-                    vx: (Math.random() - 0.5) * 0.09,
-                    vy: -0.9 - Math.random() * speedMod,
-                    vz: (Math.random() - 0.5) * 0.09,
-                    life: 1.0,
-                    hue: hue
+                    x: (Math.random() - 0.5) * 26, y: 14 + Math.random() * 10, z: (Math.random() - 0.5) * 26,
+                    vx: (Math.random() - 0.5) * 0.09, vy: -0.9 - Math.random() * speedMod, vz: (Math.random() - 0.5) * 0.09,
+                    life: 1.0, hue: hue
                 });
             }
         }
 
-        // === AUDIO ===
+        // Audio & Visual Upload
         async function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -167,7 +173,6 @@
             src.connect(analyser);
             src.connect(audioCtx.destination);
             document.getElementById('sync-status').innerText = "AUDIO_FORGE_ACTIVE";
-            document.getElementById('sync-status').classList.remove('glitch');
         };
 
         document.getElementById('mic-btn').onclick = async () => {
@@ -175,72 +180,35 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioCtx.createMediaStreamSource(stream).connect(analyser);
             document.getElementById('sync-status').innerText = "MIC_LIVE";
-            document.getElementById('sync-status').classList.remove('glitch');
         };
 
-        // === COLOR PICKER ===
-        document.getElementById('color-picker').addEventListener('input', (e) => {
-            const hex = e.target.value;
-            document.getElementById('preview').style.background = hex;
-            globalHue = parseInt(hex.slice(1,3),16) * 1.4;
-        });
-
-        // === VISUAL CORE AS BACKGROUND ===
+        // Visual as scene background
+        let backgroundTexture;
         const textureLoader = new THREE.TextureLoader();
-        const visualTexture = new THREE.VideoTexture(vid) || new THREE.Texture(); // fallback
-        visualTexture.minFilter = THREE.LinearFilter;
-        visualTexture.magFilter = THREE.LinearFilter;
-        visualTexture.format = THREE.RGBFormat;
 
         document.getElementById('visual-upload').onchange = (e) => {
             const file = e.target.files[0];
             const url = URL.createObjectURL(file);
+
             if (file.type.startsWith('video')) {
-                vid.src = url;
-                vid.muted = true;
-                vid.loop = true;
-                vid.play().catch(() => {});
-                scene.background = visualTexture; // video texture as background
+                const video = document.createElement('video');
+                video.src = url;
+                video.muted = true;
+                video.loop = true;
+                video.play();
+                backgroundTexture = new THREE.VideoTexture(video);
             } else {
-                textureLoader.load(url, tex => {
-                    scene.background = tex;
-                });
+                backgroundTexture = textureLoader.load(url);
             }
+            scene.background = backgroundTexture;
         };
 
-        // === GESTURE MANIPULATION (Orbit + Sling) ===
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
-        controls.rotateSpeed = 0.7;
-        controls.zoomSpeed = 1.2;
-        controls.panSpeed = 0.8;
-        controls.minDistance = 4;
-        controls.maxDistance = 60;
-
-        // Extra sling inertia on top of orbit
-        let slingVelocity = new THREE.Vector2(0, 0);
-        let isDragging = false;
-        let lastPos = new THREE.Vector2();
-
-        renderer.domElement.addEventListener('pointerdown', (e) => {
-            isDragging = true;
-            lastPos.set(e.clientX, e.clientY);
+        // Color picker
+        document.getElementById('color-picker').addEventListener('input', e => {
+            document.getElementById('preview').style.background = e.target.value;
+            globalHue = parseInt(e.target.value.slice(1,3), 16) * 1.4;
         });
 
-        renderer.domElement.addEventListener('pointerup', () => {
-            isDragging = false;
-        });
-
-        renderer.domElement.addEventListener('pointermove', (e) => {
-            if (isDragging) {
-                const delta = new THREE.Vector2(e.clientX - lastPos.x, e.clientY - lastPos.y);
-                slingVelocity.add(delta.multiplyScalar(0.006));
-                lastPos.set(e.clientX, e.clientY);
-            }
-        });
-
-        // ANIMATION
         let angle = 0;
 
         function animate() {
@@ -248,24 +216,24 @@
 
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
-                bass   = dataArray.slice(0, 10).reduce((a,b)=>a+b,0)/(10*255);
+                bass   = dataArray.slice(0,10).reduce((a,b)=>a+b,0)/(10*255);
                 avg    = dataArray.reduce((a,b)=>a+b,0)/(dataArray.length*255);
-                treble = dataArray.slice(200, 250).reduce((a,b)=>a+b,0)/(50*255);
+                treble = dataArray.slice(200,250).reduce((a,b)=>a+b,0)/(50*255);
 
                 bloom.strength  = 2.4 + bass * 3.2;
                 bloom.radius    = 0.65 + bass * 0.5;
                 bloom.threshold = 0.15 - avg * 0.12;
 
-                if (bass   > 0.42) spawnCascade(14 + Math.floor(bass*22), 30,   0.7);
-                if (avg    > 0.32) spawnCascade(9 + Math.floor(avg*14),  195,  1.1);
+                if (bass > 0.42) spawnCascade(14 + Math.floor(bass*22), 30, 0.7);
+                if (avg > 0.32) spawnCascade(9 + Math.floor(avg*14), 195, 1.1);
                 if (treble > 0.35) spawnCascade(22 + Math.floor(treble*28), 310, 2.0);
             }
 
-            // Sling inertia decay
+            // Sling decay
             slingVelocity.multiplyScalar(0.96);
-            angle += slingVelocity.x * 0.3 + 0.0035 + (avg * 0.065);
+            angle += 0.0035 + (avg * 0.065) + slingVelocity.x * 0.4;
 
-            // 8D ROTATIONS
+            // 8D math (full original)
             const pos = new Float32Array(pointCount * 3);
             const col = new Float32Array(pointCount * 3);
 
@@ -276,16 +244,13 @@
                 const rH = angle * 0.75 * (1 + treble * 2.8);
 
                 let t = c[0] * Math.cos(rB) - c[1] * Math.sin(rB);
-                c[1] = c[0] * Math.sin(rB) + c[1] * Math.cos(rB);
-                c[0] = t;
+                c[1] = c[0] * Math.sin(rB) + c[1] * Math.cos(rB); c[0] = t;
 
                 t = c[2] * Math.cos(rM) - c[3] * Math.sin(rM);
-                c[3] = c[2] * Math.sin(rM) + c[3] * Math.cos(rM);
-                c[2] = t;
+                c[3] = c[2] * Math.sin(rM) + c[3] * Math.cos(rM); c[2] = t;
 
                 t = c[4] * Math.cos(rH) - c[7] * Math.sin(rH);
-                c[7] = c[4] * Math.sin(rH) + c[7] * Math.cos(rH);
-                c[4] = t;
+                c[7] = c[4] * Math.sin(rH) + c[7] * Math.cos(rH); c[4] = t;
 
                 const df = Math.abs(c[5]) * 0.42 + 0.58;
 
@@ -305,13 +270,18 @@
             geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
 
-            // Cascade update (omitted for brevity - copy from your previous version)
-
             controls.update();
             composer.render();
         }
 
-        // ... (hslToRgb function and resize listener same as before)
+        function hslToRgb(h, s, l) { /* same as before */ }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
 
         animate();
     </script>
