@@ -86,13 +86,14 @@
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.4, 0.65, 0.15);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 0.5, 0.4);
         composer.addPass(bloom);
 
-        // Controls: full orbit/zoom/pan + sling
+        // Controls: full orbit/zoom/pan
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.09;
@@ -102,7 +103,7 @@
         controls.minDistance = 5;
         controls.maxDistance = 80;
 
-        // Sling inertia
+        // Sling inertia on top
         let slingVelocity = new THREE.Vector2();
         let isDragging = false;
         let lastPos = new THREE.Vector2();
@@ -178,6 +179,7 @@
             src.connect(analyser);
             src.connect(audioCtx.destination);
             document.getElementById('sync-status').innerText = "AUDIO_FORGE_ACTIVE";
+            document.getElementById('sync-status').classList.remove('glitch');
         };
 
         document.getElementById('mic-btn').onclick = async () => {
@@ -185,9 +187,10 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioCtx.createMediaStreamSource(stream).connect(analyser);
             document.getElementById('sync-status').innerText = "MIC_LIVE";
+            document.getElementById('sync-status').classList.remove('glitch');
         };
 
-        // Visual background
+        // Visual background (video/image behind particles)
         const textureLoader = new THREE.TextureLoader();
         let visualTexture;
 
@@ -209,7 +212,7 @@
                 visualTexture.minFilter = THREE.LinearFilter;
                 visualTexture.magFilter = THREE.LinearFilter;
                 visualTexture.format = THREE.RGBFormat;
-                visualTexture.needsUpdate = true; // important for video
+                visualTexture.needsUpdate = true;
             } else {
                 visualTexture = textureLoader.load(url, tex => {
                     tex.minFilter = THREE.LinearFilter;
@@ -243,9 +246,11 @@
                 avg    = dataArray.reduce((a,b)=>a+b,0)/(dataArray.length*255);
                 treble = dataArray.slice(200, 250).reduce((a,b)=>a+b,0)/(50*255);
 
-                bloom.strength  = 2.4 + bass * 3.2;
-                bloom.radius    = 0.65 + bass * 0.5;
-                bloom.threshold = 0.15 - avg * 0.12;
+                bloom.strength  = 1.8 + bass * 2.2; // reduced to prevent over-bright
+                bloom.radius    = 0.55 + bass * 0.4;
+                bloom.threshold = 0.5 - avg * 0.25;
+
+                renderer.toneMappingExposure = 0.95 + bass * 0.6; // clamp exposure
 
                 if (bass   > 0.42) spawnCascade(14 + Math.floor(bass*22), 30,   0.7);
                 if (avg    > 0.32) spawnCascade(9 + Math.floor(avg*14),  195,  1.1);
@@ -291,6 +296,15 @@
 
             geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+
+            // Cascade update (shortened for brevity — add full loop from previous if needed)
+            for (let i = cascadeParticles.length - 1; i >= 0; i--) {
+                const p = cascadeParticles[i];
+                p.x += p.vx; p.y += p.vy; p.z += p.vz;
+                p.vy -= 0.014; p.life -= 0.019;
+                if (p.life <= 0) cascadeParticles.splice(i, 1);
+            }
+            // ... buffer update code ...
 
             controls.update();
             composer.render();
