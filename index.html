@@ -3,61 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KRONOS // ZENITH SYNC</title>
+    <title>KRONOS // RECLAMATION</title>
     <style>
-        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.4); --pink: #ff0055; }
+        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.5); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        /* THE FOUNDATION - FORCED VISIBILITY */
         body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
         
-        /* Layer -2: The Foundation */
-        #video-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; background: #000; }
-        video#bg-video { position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); object-fit: cover; }
-        
-        /* Layer -1: Light Mist */
-        #dimmer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.25); z-index: -1; pointer-events: none; }
+        #bg-media-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2; display: flex; align-items: center; justify-content: center;
+            background: #000;
+        }
 
-        /* Layer 1: The Swarm */
-        canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; background: transparent; }
+        #bg-video, #bg-image {
+            position: absolute; width: 100%; height: 100%; object-fit: cover;
+            transition: opacity 1.5s ease-in-out; opacity: 0;
+        }
 
-        /* HUD Overlay */
+        #dimmer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.2); z-index: -1; pointer-events: none;
+        }
+
+        canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: transparent; }
+
+        /* HUD */
         #hud { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 95%; max-width: 600px; z-index: 100; display: flex; flex-direction: column; gap: 10px;
-            background: var(--glass); padding: 20px; border-radius: 20px; border: 1px solid rgba(0, 243, 255, 0.2);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
 
         .row { display: flex; gap: 8px; }
         .btn { 
-            flex: 1; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(0, 243, 255, 0.3); 
-            color: var(--neon); padding: 14px 2px; border-radius: 12px; font-size: 9px; font-weight: 900; 
-            cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex: 1; background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(0, 243, 255, 0.4); 
+            color: var(--neon); padding: 14px 2px; border-radius: 10px; font-size: 8px; font-weight: 900; 
+            cursor: pointer; text-transform: uppercase; text-align: center;
         }
-        .btn:active { transform: scale(0.95); }
-        .btn.active { background: var(--neon); color: #000; box-shadow: 0 0 25px var(--neon); }
+        .btn.active { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
         input { display: none; }
-        #status { font-size: 10px; color: var(--neon); text-align: left; letter-spacing: 3px; margin-bottom: 5px; text-shadow: 0 0 10px var(--neon); }
+        #status { font-size: 9px; color: var(--neon); letter-spacing: 2px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="video-layer">
-        <video id="bg-video" playsinline loop muted autoplay 
-               src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-loop-with-blue-lights-40244-large.mp4">
-        </video>
+    <div id="bg-media-container">
+        <video id="bg-video" playsinline loop muted></video>
+        <img id="bg-image" alt="background memory">
         <div id="dimmer"></div>
     </div>
 
     <canvas id="mainCanvas"></canvas>
 
     <div id="hud">
-        <div id="status">// KRONOS: READY</div>
+        <div id="status">// KRONOS: STANDBY_READY</div>
         <div class="row">
-            <label for="vid-up" class="btn">LOAD MEMORY</label>
-            <input type="file" id="vid-up">
+            <label for="mem-up" class="btn">LOAD MEMORY</label>
+            <input type="file" id="mem-up" accept="video/*,image/*">
             
             <label for="aud-up" class="btn">SONIC CORE</label>
-            <input type="file" id="aud-up">
+            <input type="file" id="aud-up" accept="audio/*">
             
             <button id="vortBtn" class="btn">VORTEX: OFF</button>
         </div>
@@ -78,81 +86,103 @@
 
         let audioCtx, analyser, dataArray, prioritySource = null;
         let bass = 0, avg = 0, treble = 0, userHue = 185;
-        let isVortex = false, isSling = false, zoomLevel = 1.0;
+        let isVortex = false, isSling = false;
         let rotX = 0, rotY = 0, lastPos = { x: 0, y: 0 };
 
-        const video = document.getElementById('bg-video');
+        const vid = document.getElementById('bg-video');
+        const img = document.getElementById('bg-image');
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.z = 13;
 
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('mainCanvas'), antialias: false, alpha: true, preserveDrawingBuffer: true });
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('mainCanvas'), antialias: false, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.2, 0.4, 0.1);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.4, 0.1);
         composer.addPass(bloom);
 
-        // --- 8D HYPER-PHYSICS ---
         const pCount = 2000;
         const hPoints = Array.from({ length: pCount }, () => Array.from({ length: 8 }, () => (Math.random() - 0.5) * 4.5));
         const geo = new THREE.BufferGeometry();
-        const mat = new THREE.PointsMaterial({ size: 0.07, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
+        const mat = new THREE.PointsMaterial({ size: 0.06, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
         const swarm = new THREE.Points(geo, mat);
         scene.add(swarm);
 
-        // --- INTERACTION ---
-        const start = (x, y) => { isSling = true; lastPos = { x, y }; };
-        const end = () => isSling = false;
-        const move = (x, y) => {
-            if (isSling) {
-                rotY += (x - lastPos.x) * 0.012;
-                rotX += (y - lastPos.y) * 0.012;
-                lastPos = { x, y };
+        // --- AUDIO ENGINE ---
+        async function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 512;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
             }
-        };
-
-        window.addEventListener('mousedown', e => start(e.clientX, e.clientY));
-        window.addEventListener('touchstart', e => start(e.touches[0].clientX, e.touches[0].clientY));
-        window.addEventListener('mouseup', end);
-        window.addEventListener('touchend', end);
-        window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
-        window.addEventListener('touchmove', e => move(e.touches[0].clientX, e.touches[0].clientY));
-
-        // --- AUDIO ENGINE CORE ---
-        function setupAudio(source, label) {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (!analyser) { analyser = audioCtx.createAnalyser(); analyser.fftSize = 512; dataArray = new Uint8Array(analyser.frequencyBinCount); }
-            if (prioritySource) prioritySource.disconnect();
-            source.connect(analyser); prioritySource = source;
-            document.getElementById('status').innerText = `// KRONOS: ${label}_SYNC`;
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
         }
 
-        document.getElementById('vid-up').onchange = (e) => {
-            const file = e.target.files[0];
-            video.src = URL.createObjectURL(file);
-            video.muted = false; // Video is audible
-            video.play();
-            const source = (audioCtx || new AudioContext()).createMediaElementSource(video);
+        function routeSource(source, label) {
+            if (prioritySource) prioritySource.disconnect();
+            source.connect(analyser);
             source.connect(audioCtx.destination);
-            if (!prioritySource) setupAudio(source, "MEMORY");
+            prioritySource = source;
+            document.getElementById('status').innerText = `// KRONOS: ${label}_ACTIVE`;
+        }
+
+        // --- MEMORY LOADER (IMAGE & VIDEO) ---
+        document.getElementById('mem-up').onchange = async (e) => {
+            await initAudio();
+            const file = e.target.files[0];
+            const url = URL.createObjectURL(file);
+            
+            // State Fade
+            vid.style.opacity = 0;
+            img.style.opacity = 0;
+
+            setTimeout(() => {
+                if (file.type.startsWith('video')) {
+                    img.style.display = 'none';
+                    vid.style.display = 'block';
+                    vid.src = url;
+                    vid.muted = false;
+                    vid.play();
+                    vid.style.opacity = 1;
+                    const source = audioCtx.createMediaElementSource(vid);
+                    routeSource(source, "VIDEO_MEMORY");
+                } else {
+                    vid.style.display = 'none';
+                    img.style.display = 'block';
+                    img.src = url;
+                    img.style.opacity = 1;
+                    document.getElementById('status').innerText = `// KRONOS: IMAGE_MEMORY_LOADED`;
+                }
+            }, 500);
         };
 
-        document.getElementById('aud-up').onchange = (e) => {
+        document.getElementById('aud-up').onchange = async (e) => {
+            await initAudio();
             const audio = new Audio(URL.createObjectURL(e.target.files[0]));
             audio.play();
-            const source = (audioCtx || new AudioContext()).createMediaElementSource(audio);
-            source.connect(audioCtx.destination);
-            setupAudio(source, "SONIC_CORE");
+            const source = audioCtx.createMediaElementSource(audio);
+            routeSource(source, "SONIC_CORE");
         };
 
         document.getElementById('micBtn').onclick = async () => {
+            await initAudio();
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const source = (audioCtx || new AudioContext()).createMediaStreamSource(stream);
-            setupAudio(source, "MIC_STREAM");
+            const source = audioCtx.createMediaStreamSource(stream);
+            routeSource(source, "MIC_LIVE");
             document.getElementById('micBtn').classList.add('active');
         };
+
+        // --- INTERACTION ---
+        const start = (x, y) => { isSling = true; lastPos = { x, y }; initAudio(); };
+        window.addEventListener('mousedown', e => start(e.clientX, e.clientY));
+        window.addEventListener('touchstart', e => start(e.touches[0].clientX, e.touches[0].clientY));
+        window.addEventListener('mouseup', () => isSling = false);
+        window.addEventListener('touchend', () => isSling = false);
+        window.addEventListener('mousemove', e => { if(isSling){ rotY+=(e.clientX-lastPos.x)*0.01; rotX+=(e.clientY-lastPos.y)*0.01; lastPos={x:e.clientX,y:e.clientY}; }});
+        window.addEventListener('touchmove', e => { if(isSling){ rotY+=(e.touches[0].clientX-lastPos.x)*0.01; rotX+=(e.touches[0].clientY-lastPos.y)*0.01; lastPos={x:e.touches[0].clientX,y:e.touches[0].clientY}; }});
 
         document.getElementById('vortBtn').onclick = (e) => {
             isVortex = !isVortex;
@@ -160,64 +190,44 @@
             e.target.innerText = isVortex ? "VORTEX: ON" : "VORTEX: OFF";
         };
 
-        document.getElementById('color-picker').oninput = (e) => {
-            const hex = e.target.value;
-            const r = parseInt(hex.slice(1,3), 16) / 255;
-            const g = parseInt(hex.slice(3,5), 16) / 255;
-            const b = parseInt(hex.slice(5,7), 16) / 255;
-            const max = Math.max(r, g, b), min = Math.min(r, g, b);
-            let h = (max === min) ? 0 : (max === r) ? (g-b)/(max-min) : (max === g) ? 2+(b-r)/(max-min) : 4+(r-g)/(max-min);
-            userHue = h * 60;
-            document.getElementById('status').style.color = hex;
-        };
-
         function animate() {
             requestAnimationFrame(animate);
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
-                bass = dataArray[2]/255; avg = dataArray[128]/255; treble = dataArray[240]/255;
-                bloom.strength = 1.2 + bass * 3.0;
+                bass = dataArray[2]/255; avg = dataArray[128]/255;
+                bloom.strength = 1.0 + bass * 3.5;
             }
 
             const posA = new Float32Array(pCount * 3);
             const colA = new Float32Array(pCount * 3);
 
             hPoints.forEach((p, i) => {
-                let time = performance.now() * 0.0007;
-                let r = time * (1 + (i%2 ? bass : avg));
-                
-                // Rotation
+                let r = performance.now() * 0.0006 * (1 + (i%2 ? bass : avg));
                 let x = p[0] * Math.cos(r + rotY) - p[1] * Math.sin(r + rotY);
                 let y = p[0] * Math.sin(r + rotY) + p[1] * Math.cos(r + rotY);
                 let z = p[2] * Math.cos(rotX);
 
-                // Vortex Physics
                 if (isVortex) {
                     let d = Math.sqrt(x*x + y*y);
-                    let vAngle = (bass * 4.5) * (1.8 / (d + 0.5));
+                    let vAngle = (bass * 5.0) * (1.8 / (d + 0.5));
                     let vx = x * Math.cos(vAngle) - y * Math.sin(vAngle);
                     y = x * Math.sin(vAngle) + y * Math.cos(vAngle);
                     x = vx;
                 }
 
-                // Sling Expansion
-                let expand = isSling ? 1.6 : 1.0;
-                const s = (Math.abs(p[5]) * 0.4 + 0.6) * expand * (1 + bass * 0.25);
-                
+                let expand = isSling ? 1.7 : 1.0;
+                const s = (Math.abs(p[5]) * 0.4 + 0.6) * expand * (1 + bass * 0.2);
                 posA[i*3] = x * 4.2 * s; 
                 posA[i*3+1] = y * 4.2 * s; 
                 posA[i*3+2] = (z + p[4]) * 4.2 * s;
 
-                // Color Map
-                const rgb = hslToRgb(((userHue + bass*40)%360)/360, 0.9, 0.75);
+                const rgb = hslToRgb(((userHue + bass*40)%360)/360, 0.9, 0.7);
                 colA[i*3] = rgb[0]; colA[i*3+1] = rgb[1]; colA[i*3+2] = rgb[2];
             });
 
             geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colA, 3));
-            
-            swarm.rotation.y += 0.001;
-            rotX *= 0.92; rotY *= 0.92; // Friction
+            rotX *= 0.93; rotY *= 0.93;
             composer.render();
         }
 
