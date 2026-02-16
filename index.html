@@ -3,213 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KRONOS // NEXUS VORTEX</title>
+    <title>KRONOS // IMMERSIVE</title>
     <style>
-        :root { --neon-cyan: #00f3ff; --glass-bg: rgba(5, 5, 5, 0.9); --olympus-gold: #ffd700; --glitch-red: #ff0055; }
+        :root { --neon-cyan: #00f3ff; --glass-bg: rgba(0, 0, 0, 0.6); --olympus-gold: #ffd700; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #010102; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; font-family: 'Courier New', monospace; color: white; }
+        body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
         
-        #handheld { 
-            position: relative; width: 380px; height: auto; max-height: 98vh;
-            background: #080808; border-radius: 40px; border: 1px solid rgba(0, 243, 255, 0.2); 
-            display: flex; flex-direction: column; padding: 20px; box-shadow: 0 0 50px rgba(0,0,0,1); overflow: hidden;
+        /* Full Screen Layers */
+        #container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; }
+        
+        video#bg-video { 
+            position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; 
+            width: auto; height: auto; transform: translate(-50%, -50%); 
+            object-fit: cover; z-index: 0; 
         }
 
-        #screen { 
-            width: 100%; aspect-ratio: 3/4; background: #000; border-radius: 20px; 
-            position: relative; overflow: hidden; margin-bottom: 15px; border: 1px solid #111;
+        #video-dimmer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.25); /* Lightened for visibility */
+            pointer-events: none; z-index: 1; 
         }
 
-        #video-dimmer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.55); pointer-events: none; z-index: 1; }
-        video#bg-video { position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; width: auto; height: auto; transform: translate(-50%, -50%); object-fit: cover; z-index: 0; opacity: 0; transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; cursor: grab; }
 
-        canvas#mainCanvas { position: relative; width: 100%; height: 100%; z-index: 2; cursor: grab; touch-action: none; }
+        /* HUD Overlay */
+        #hud { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 95%; max-width: 600px; z-index: 10; display: flex; flex-direction: column; gap: 10px;
+            background: var(--glass-bg); padding: 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+        }
 
-        #status-bar { font-size: 8px; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        #controlPanel { display: flex; flex-direction: column; gap: 8px; }
-        .controls-row { display: flex; gap: 6px; }
+        .controls-row { display: flex; gap: 8px; }
+        .btn { 
+            flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
+            color: #fff; padding: 12px 5px; border-radius: 10px; font-size: 10px; font-weight: 900; 
+            cursor: pointer; text-transform: uppercase; text-align: center;
+        }
+        .btn.active { border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); }
         
-        .btn { flex: 1; background: var(--glass-bg); border: 1px solid #333; color: var(--neon-cyan); padding: 10px 2px; border-radius: 8px; font-size: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.3s; text-align: center; }
-        .btn.active { background: var(--neon-cyan); color: #000; box-shadow: 0 0 12px var(--neon-cyan); }
-        #recordBtn.recording { background: var(--glitch-red); color: #fff; animation: pulse 1.5s infinite; }
-
         input[type="file"], input[type="color"] { display: none; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        #status-text { font-size: 9px; color: var(--neon-cyan); text-align: center; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
-    <div id="handheld">
-        <div id="status-bar">
-            <span>MODEL: KRONOS</span>
-            <span id="sync-status">PRIORITY: IDLE</span>
-        </div>
+    <div id="container">
+        <video id="bg-video" playsinline loop muted></video>
+        <div id="video-dimmer"></div>
+        <canvas id="mainCanvas"></canvas>
+    </div>
 
-        <div id="screen">
-            <video id="bg-video" playsinline loop muted></video>
-            <div id="video-dimmer"></div>
-            <canvas id="mainCanvas"></canvas>
+    <div id="hud">
+        <div id="status-text">KRONOS // SYNC READY</div>
+        <div class="controls-row">
+            <label for="vid-up" class="btn">LOAD VIDEO</label>
+            <input type="file" id="vid-up" accept="video/*">
+            
+            <label for="aud-up" class="btn">AUDIO CORE</label>
+            <input type="file" id="aud-up" accept="audio/*">
+            
+            <button id="vortBtn" class="btn">VORTEX: OFF</button>
         </div>
-
-        <div id="controlPanel">
-            <div class="controls-row">
-                <label for="vid-up" class="btn">LOAD MEMORY</label>
-                <input type="file" id="vid-up" accept="video/*">
-                
-                <label for="aud-up" class="btn">SONIC CORE</label>
-                <input type="file" id="aud-up" accept="audio/*">
-                
-                <button id="vortBtn" class="btn">VORTEX: OFF</button>
-            </div>
-            <div class="controls-row">
-                <label for="color-picker" class="btn">TINT</label>
-                <input type="color" id="color-picker" value="#00f3ff">
-                <button id="micBtn" class="btn">MIC SYNC</button>
-                <button id="recordBtn" class="btn">REC</button>
-            </div>
-            <button class="btn" style="border-color: var(--olympus-gold); color: var(--olympus-gold); letter-spacing: 2px;" onclick="window.open('https://nexusvortex.ca', '_blank')">ENTER OLYMPUS</button>
+        <div class="controls-row">
+            <label for="color-picker" class="btn" id="tint-label">TINT PARTICLES</label>
+            <input type="color" id="color-picker" value="#00f3ff">
+            
+            <button id="micBtn" class="btn">MIC</button>
+            <button id="recordBtn" class="btn" style="color: #ff0055;">REC</button>
         </div>
     </div>
 
     <script type="module">
         import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
-        import { OrbitControls } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls.js';
         import { EffectComposer } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/EffectComposer.js';
         import { RenderPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 
         let audioCtx, analyser, dataArray, prioritySource = null;
-        let bass = 0, avg = 0, treble = 0, userHue = 185, isVortex = false;
+        let bass = 0, avg = 0, treble = 0, isVortex = false;
+        let particleColor = new THREE.Color(0x00f3ff);
 
-        const container = document.getElementById('screen');
         const video = document.getElementById('bg-video');
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(70, container.clientWidth / container.clientHeight, 0.1, 1000);
-        camera.position.z = 12;
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 10;
 
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('mainCanvas'), antialias: false, alpha: true, preserveDrawingBuffer: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.enableZoom = false;
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('mainCanvas'), antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloomPass = new UnrealBloomPass(new THREE.Vector2(container.clientWidth, container.clientHeight), 2.5, 0.4, 0.1);
-        composer.addPass(bloomPass);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 0.4, 0.1);
+        composer.addPass(bloom);
 
-        const pCount = 2400;
-        const hPoints = Array.from({ length: pCount }, () => Array.from({ length: 8 }, () => (Math.random() - 0.5) * 3.8));
+        // Particle System
+        const pCount = 2500;
+        const hPoints = Array.from({ length: pCount }, () => ({
+            pos: new THREE.Vector3((Math.random()-0.5)*15, (Math.random()-0.5)*15, (Math.random()-0.5)*15),
+            speed: Math.random() * 0.02 + 0.005
+        }));
         const geo = new THREE.BufferGeometry();
-        const mat = new THREE.PointsMaterial({ size: 0.07, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
+        const mat = new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
         const swarm = new THREE.Points(geo, mat);
         scene.add(swarm);
 
-        // --- DUAL-SYNC AUDIO ENGINE ---
-        function getAudioContext() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Audio Engine
+        function setupAudio(source, label) {
+            if (!audioCtx) audioCtx = new AudioContext();
             if (!analyser) {
                 analyser = audioCtx.createAnalyser();
                 analyser.fftSize = 512;
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
             }
-            return audioCtx;
-        }
-
-        function setPrioritySource(source, label) {
             if (prioritySource) prioritySource.disconnect();
             source.connect(analyser);
             prioritySource = source;
-            document.getElementById('sync-status').innerText = `PRIORITY: ${label}`;
+            document.getElementById('status-text').innerText = `KRONOS // ACTIVE: ${label}`;
         }
 
         document.getElementById('vid-up').onchange = (e) => {
             video.src = URL.createObjectURL(e.target.files[0]);
-            video.style.opacity = 1;
             video.play();
-            const ctx = getAudioContext();
-            const source = ctx.createMediaElementSource(video);
-            source.connect(ctx.destination); 
-            if (!prioritySource) setPrioritySource(source, "VIDEO");
+            const source = (audioCtx || new AudioContext()).createMediaElementSource(video);
+            source.connect((audioCtx || new AudioContext()).destination);
+            setupAudio(source, "VIDEO_LINK");
         };
 
         document.getElementById('aud-up').onchange = (e) => {
             const audio = new Audio(URL.createObjectURL(e.target.files[0]));
             audio.play();
-            const ctx = getAudioContext();
-            const source = ctx.createMediaElementSource(audio);
-            source.connect(ctx.destination);
-            setPrioritySource(source, "AUDIO");
+            const source = (audioCtx || new AudioContext()).createMediaElementSource(audio);
+            source.connect((audioCtx || new AudioContext()).destination);
+            setupAudio(source, "SONIC_CORE");
         };
 
-        document.getElementById('micBtn').onclick = async () => {
-            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const ctx = getAudioContext();
-            const source = ctx.createMediaStreamSource(s);
-            setPrioritySource(source, "MIC");
-            document.getElementById('micBtn').classList.add('active');
+        document.getElementById('color-picker').oninput = (e) => {
+            particleColor.set(e.target.value);
+            document.getElementById('tint-label').style.color = e.target.value;
         };
 
         document.getElementById('vortBtn').onclick = (e) => {
             isVortex = !isVortex;
-            e.target.innerText = isVortex ? "VORTEX: ON" : "VORTEX: OFF";
             e.target.classList.toggle('active');
+            e.target.innerText = isVortex ? "VORTEX: ON" : "VORTEX: OFF";
         };
 
         function animate() {
             requestAnimationFrame(animate);
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
-                bass = dataArray[4]/255; 
-                avg = dataArray[128]/255;
-                treble = dataArray[240]/255;
-                bloomPass.strength = 1.4 + bass * 3.2;
+                bass = dataArray[2]/255; avg = dataArray[128]/255; treble = dataArray[200]/255;
+                bloom.strength = 1.0 + (bass * 2.5);
             }
 
-            swarm.rotation.y += 0.002 + (avg * 0.04);
-            const pA = new Float32Array(pCount * 3), cA = new Float32Array(pCount * 3);
-            
+            const positions = new Float32Array(pCount * 3);
+            const colors = new Float32Array(pCount * 3);
+
             hPoints.forEach((p, i) => {
-                let c = [...p], time = performance.now()*0.001;
-                let r = time * (1 + (i%2 ? bass : avg));
+                let time = performance.now() * 0.001;
+                let angle = time * p.speed * 10;
                 
-                let tX = c[0]*Math.cos(r) - c[1]*Math.sin(r);
-                let tY = c[0]*Math.sin(r) + c[1]*Math.cos(r);
-                
-                // KRONOS VORTEX MATH (Sink + Pulse)
+                // Rotation
+                let x = p.pos.x * Math.cos(angle) - p.pos.z * Math.sin(angle);
+                let z = p.pos.x * Math.sin(angle) + p.pos.z * Math.cos(angle);
+                let y = p.pos.y;
+
                 if (isVortex) {
-                    let dist = Math.sqrt(tX*tX + tY*tY);
-                    // Bass sinks it, Treble pulses it out
-                    let flow = (bass * 2.5) - (treble * 1.5);
-                    let angle = flow * (1.0 / (dist + 0.4));
-                    let vX = tX*Math.cos(angle) - tY*Math.sin(angle);
-                    tY = tX*Math.sin(angle) + tY*Math.cos(angle);
-                    tX = vX;
+                    let d = Math.sqrt(x*x + z*z);
+                    let force = (bass * 3.0) - (treble * 1.5);
+                    let vAngle = force * (1.0 / (d + 0.5));
+                    let vx = x * Math.cos(vAngle) - z * Math.sin(vAngle);
+                    z = x * Math.sin(vAngle) + z * Math.cos(vAngle);
+                    x = vx;
                 }
 
-                const d = (Math.abs(c[5]) * 0.45 + 0.55);
-                pA[i*3] = tX*4.2*d; pA[i*3+1] = tY*4.2*d; pA[i*3+2] = c[4]*4.2*d;
+                positions[i*3] = x; positions[i*3+1] = y; positions[i*3+2] = z;
                 
-                const rgb = hslToRgb(((userHue + bass*35)%360)/360, 1.0, 0.7);
-                cA[i*3]=rgb[0]; cA[i*3+1]=rgb[1]; cA[i*3+2]=rgb[2];
+                // Set color from picker + bass intensity
+                colors[i*3] = particleColor.r + (bass * 0.2);
+                colors[i*3+1] = particleColor.g + (avg * 0.1);
+                colors[i*3+2] = particleColor.b + (treble * 0.3);
             });
-            geo.setAttribute('position', new THREE.BufferAttribute(pA, 3));
-            geo.setAttribute('color', new THREE.BufferAttribute(cA, 3));
+
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            swarm.rotation.y += 0.001;
             composer.render();
         }
 
-        function hslToRgb(h, s, l) {
-            let r, g, b;
-            const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
-            const f = (p, q, t) => {
-                if (t < 0) t += 1; if (t > 1) t -= 1;
-                if (t < 1/6) return p + (q - p) * 6 * t;
-                if (t < 1/2) return q;
-                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                return p;
-            };
-            return [f(p, q, h + 1/3), f(p, q, h), f(p, q, h - 1/3)];
-        }
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        };
+
         animate();
     </script>
 </body>
