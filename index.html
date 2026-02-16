@@ -8,77 +8,86 @@
         :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.5); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         
-        body {
-            background: #000;
-            overflow: hidden; height: 100vh; width: 100vw;
-            font-family: 'Courier New', monospace;
-        }
-
-        canvas#mainCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1;
-            pointer-events: auto;
-        }
-
-        #shade-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.68);
-            z-index: 5;
-            pointer-events: none;
+        body { 
+            background: #000; overflow: hidden; height: 100vh; width: 100vw; 
+            font-family: 'Courier New', monospace; 
         }
 
         #media-deck {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10;
+            z-index: 1; /* Video/Image at the very back */
             display: flex; justify-content: center; align-items: center;
             pointer-events: none;
         }
+        
         video#bg-video, img#bg-image {
             max-width: 92%; max-height: 82%;
-            box-shadow: 0 0 60px rgba(0, 243, 255, 0.2);
-            border-radius: 12px;
-            display: none;
+            box-shadow: 0 0 70px rgba(0, 243, 255, 0.22);
+            border-radius: 12px; display: none;
+            animation: breathe 9s ease-in-out infinite;
+            border: 1px solid rgba(0, 243, 255, 0.08);
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.96; }
+            50% { transform: scale(1.015); opacity: 1; }
+        }
+
+        canvas#mainCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 3; /* Particles on top of media */
+            pointer-events: auto; /* Allow gestures to control the field */
+        }
+
+        #shade-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.62); /* subtle darkening to make particles pop */
+            z-index: 2;
+            pointer-events: none;
         }
 
         #ui {
             position: absolute; top: 25px; left: 25px; z-index: 100;
             color: var(--neon); font-size: 10px; letter-spacing: 2px;
-            pointer-events: none; opacity: 0.92;
+            pointer-events: none; opacity: 0.92; text-shadow: 0 0 10px var(--neon);
         }
 
         #controls {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 95%; max-width: 520px; z-index: 100;
             background: var(--glass); padding: 16px; border-radius: 14px;
-            border: 1px solid rgba(0, 243, 255, 0.35);
-            backdrop-filter: blur(14px);
+            border: 1px solid rgba(0, 243, 255, 0.35); backdrop-filter: blur(15px);
             display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
         }
 
         .btn, .color-container {
-            background: rgba(0, 0, 0, 0.65); border: 1px solid rgba(0, 243, 255, 0.4);
+            background: rgba(10, 10, 10, 0.8); border: 1px solid rgba(0, 243, 255, 0.4);
             color: var(--neon); padding: 13px; border-radius: 8px;
             cursor: pointer; text-transform: uppercase; font-size: 9px; font-weight: 800;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+        
         input { display: none; }
         .color-preview { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #fff; }
+        .glitch { color: var(--pink); animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <canvas id="mainCanvas"></canvas>
-    <div id="shade-overlay"></div>
-
     <div id="media-deck">
         <video id="bg-video" playsinline loop muted></video>
-        <img id="bg-image" alt="Memory">
+        <img id="bg-image" alt="Core Memory">
     </div>
+
+    <div id="shade-overlay"></div>
+
+    <canvas id="mainCanvas"></canvas>
 
     <div id="ui">
         // HYPERION // INVERSE_ZENITH<br>
         // STATUS: <span id="sync-status" class="glitch">AWAITING CORE</span><br>
-        // LAYER: MEDIA_OVER_8D
+        // ARCH: MEDIA_UNDER_8D_SLING
     </div>
 
     <div id="controls">
@@ -117,7 +126,8 @@
                 img.style.display = 'none';
                 vid.style.display = 'block';
                 vid.src = url;
-                vid.play();
+                vid.muted = true;
+                vid.play().catch(() => {});
             } else {
                 vid.style.display = 'none';
                 img.style.display = 'block';
@@ -144,7 +154,7 @@
         const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.4, 0.65, 0.15);
         composer.addPass(bloom);
 
-        // 8D HYPER SWARM (original math restored)
+        // === 8D HYPER-SWARM (original math) ===
         const pointCount = 1800;
         const hyperPoints = [];
         const isMagentaArray = new Uint8Array(pointCount);
@@ -158,7 +168,7 @@
         const swarm = new THREE.Points(geometry, material);
         scene.add(swarm);
 
-        // CASCADE (kept from previous perfection)
+        // === CASCADE ===
         const cascadeCount = 420;
         const cascadePositions = new Float32Array(cascadeCount * 3);
         const cascadeColors = new Float32Array(cascadeCount * 3);
@@ -185,7 +195,7 @@
             }
         }
 
-        // AUDIO
+        // === AUDIO ===
         async function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -202,49 +212,92 @@
             src.connect(analyser);
             src.connect(audioCtx.destination);
             document.getElementById('sync-status').innerText = "AUDIO_FORGE_ACTIVE";
+            document.getElementById('sync-status').classList.remove('glitch');
         };
 
         document.getElementById('mic-btn').onclick = async () => {
             await initAudio();
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const src = audioCtx.createMediaStreamSource(stream);
-            src.connect(analyser);
+            audioCtx.createMediaStreamSource(stream).connect(analyser);
             document.getElementById('sync-status').innerText = "MIC_LIVE";
+            document.getElementById('sync-status').classList.remove('glitch');
         };
 
-        // COLOR PICKER → GLOBAL HUE
+        // === COLOR PICKER ===
         document.getElementById('color-picker').addEventListener('input', (e) => {
             const hex = e.target.value;
             document.getElementById('preview').style.background = hex;
-            globalHue = parseInt(hex.slice(1,3),16) * 1.4; // rough but effective mapping
+            globalHue = parseInt(hex.slice(1,3),16) * 1.4; // rough hue mapping
         });
 
-        // ANIMATION
-        let angle = 0;
+        // === GESTURE SLING PHYSICS ===
+        let isDragging = false;
+        let rotationVelocity = { x: 0, y: 0 };
+        let lastPos = { x: 0, y: 0 };
         let expansionFactor = 1.0;
+        let targetExpansion = 1.0;
+
+        window.addEventListener('mousedown', (e) => { 
+            isDragging = true; 
+            targetExpansion = 1.45; 
+            lastPos = { x: e.clientX, y: e.clientY }; 
+        });
+        window.addEventListener('mouseup',   () => { isDragging = false; targetExpansion = 1.0; });
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                rotationVelocity.x = (e.clientX - lastPos.x) * 0.006;
+                rotationVelocity.y = (e.clientY - lastPos.y) * 0.006;
+                lastPos = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        // Touch support
+        window.addEventListener('touchstart', (e) => { 
+            isDragging = true; 
+            targetExpansion = 1.45; 
+            lastPos = { x: e.touches[0].clientX, y: e.touches[0].clientY }; 
+        });
+        window.addEventListener('touchend',   () => { isDragging = false; targetExpansion = 1.0; });
+        window.addEventListener('touchmove',  (e) => {
+            if (isDragging) {
+                rotationVelocity.x = (e.touches[0].clientX - lastPos.x) * 0.009;
+                rotationVelocity.y = (e.touches[0].clientY - lastPos.y) * 0.009;
+                lastPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        });
+
+        let angle = 0;
 
         function animate() {
             requestAnimationFrame(animate);
 
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
-                bass = dataArray.slice(0, 10).reduce((a,b)=>a+b,0)/(10*255);
-                avg = dataArray.reduce((a,b)=>a+b,0)/(dataArray.length*255);
+                bass   = dataArray.slice(0, 10).reduce((a,b)=>a+b,0)/(10*255);
+                avg    = dataArray.reduce((a,b)=>a+b,0)/(dataArray.length*255);
                 treble = dataArray.slice(200, 250).reduce((a,b)=>a+b,0)/(50*255);
 
-                bloom.strength = 2.4 + bass * 3.2;
-                bloom.radius = 0.65 + bass * 0.5;
+                bloom.strength  = 2.4 + bass * 3.2;
+                bloom.radius    = 0.65 + bass * 0.5;
                 bloom.threshold = 0.15 - avg * 0.12;
 
-                // Spawn cascade (full spectrum)
-                if (bass > 0.42) spawnCascade(14 + Math.floor(bass*22), 30, 0.7);
-                if (avg > 0.32) spawnCascade(9 + Math.floor(avg*14), 195, 1.1);
+                if (bass   > 0.42) spawnCascade(14 + Math.floor(bass*22), 30,   0.7);
+                if (avg    > 0.32) spawnCascade(9 + Math.floor(avg*14),  195,  1.1);
                 if (treble > 0.35) spawnCascade(22 + Math.floor(treble*28), 310, 2.0);
             }
 
-            angle += 0.0035 + (avg * 0.065);
+            // Gesture physics
+            if (!isDragging) {
+                rotationVelocity.x *= 0.96;
+                rotationVelocity.y *= 0.96;
+                expansionFactor += (targetExpansion - expansionFactor) * 0.12;
+            } else {
+                expansionFactor += (targetExpansion - expansionFactor) * 0.22;
+            }
 
-            // 8D ROTATIONS (original math)
+            angle += 0.0035 + (avg * 0.065) + rotationVelocity.x * 0.3;
+
+            // 8D ROTATIONS + GESTURE EXPANSION
             const pos = new Float32Array(pointCount * 3);
             const col = new Float32Array(pointCount * 3);
 
@@ -254,26 +307,23 @@
                 const rM = angle * 1.35 * (1 + avg);
                 const rH = angle * 0.75 * (1 + treble * 2.8);
 
-                // Plane 0-1 (bass)
                 let t = c[0] * Math.cos(rB) - c[1] * Math.sin(rB);
                 c[1] = c[0] * Math.sin(rB) + c[1] * Math.cos(rB);
                 c[0] = t;
 
-                // Plane 2-3 (mids)
                 t = c[2] * Math.cos(rM) - c[3] * Math.sin(rM);
                 c[3] = c[2] * Math.sin(rM) + c[3] * Math.cos(rM);
                 c[2] = t;
 
-                // Plane 4-7 (treble puncture)
                 t = c[4] * Math.cos(rH) - c[7] * Math.sin(rH);
                 c[7] = c[4] * Math.sin(rH) + c[7] * Math.cos(rH);
                 c[4] = t;
 
                 const df = (Math.abs(c[5]) * 0.42 + 0.58) * expansionFactor;
 
-                pos[i*3]   = c[0] * 4.0 * df;
-                pos[i*3+1] = c[2] * 4.0 * df;
-                pos[i*3+2] = c[4] * 4.0 * df;
+                pos[i*3]   = c[0] * 4.2 * df;
+                pos[i*3+1] = c[2] * 4.2 * df;
+                pos[i*3+2] = c[4] * 4.2 * df;
 
                 const pulse = Math.sin(angle * 3.2 + c[0]) * 0.5 + 0.5;
                 const h = (globalHue + (isMagentaArray[i] ? 55 : 0)) % 360;
