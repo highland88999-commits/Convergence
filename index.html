@@ -3,59 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KRONOS // TRANSPARENT ENGINE</title>
+    <title>KRONOS // TRANSPARENT ZENITH</title>
     <style>
         :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.4); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
+        /* THE FOUNDATION - NO BLACK BLOCKS */
+        body, html { 
+            background: transparent; 
+            background-color: #000; /* Fallback for load */
+            overflow: hidden; 
+            height: 100vh; width: 100vw; 
+            font-family: 'Courier New', monospace; 
+        }
         
-        /* THE BACKPLANE - THIS IS WHERE THE VIDEO LIVES */
-        #media-layer {
+        #media-deck {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -2; background: #000; display: flex; justify-content: center; align-items: center;
+            z-index: -2; display: flex; justify-content: center; align-items: center;
         }
 
         video#bg-video, img#bg-image {
             position: absolute; width: 100%; height: 100%; object-fit: cover;
-            display: none; opacity: 0; transition: opacity 1s ease;
+            display: none; opacity: 0; transition: opacity 0.8s ease;
         }
 
-        /* THE SWARM - MUST BE TRANSPARENT */
+        /* THE SWARM - FULLY GHOSTED BACKGROUND */
         canvas#mainCanvas { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 1; background: transparent !important;
+            z-index: 1; 
+            background: transparent !important;
+            pointer-events: auto;
         }
 
         #hud { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 500px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
-            background: var(--glass); padding: 15px; border-radius: 15px; border: 1px solid rgba(0, 243, 255, 0.15);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            width: 92%; max-width: 550px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
+            background: var(--glass); padding: 18px; border-radius: 20px; border: 1px solid rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         }
 
-        .row { display: flex; gap: 6px; }
+        .row { display: flex; gap: 8px; }
         .btn { 
-            flex: 1; background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(0, 243, 255, 0.3); 
-            color: var(--neon); padding: 12px 2px; border-radius: 8px; font-size: 8px; font-weight: 900; 
-            cursor: pointer; text-transform: uppercase;
+            flex: 1; background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(0, 243, 255, 0.4); 
+            color: var(--neon); padding: 14px 2px; border-radius: 12px; font-size: 8px; font-weight: 900; 
+            cursor: pointer; text-transform: uppercase; text-align: center;
         }
-        .btn.active { background: var(--neon); color: #000; box-shadow: 0 0 15px var(--neon); }
+        .btn.active { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
         input { display: none; }
-        #status { font-size: 9px; color: var(--neon); letter-spacing: 2px; margin-bottom: 5px; }
+        #status { font-size: 10px; color: var(--neon); letter-spacing: 3px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="media-layer">
+    <div id="media-deck">
         <video id="bg-video" playsinline loop crossorigin="anonymous"></video>
-        <img id="bg-image" alt="background">
+        <img id="bg-image" alt="user-memory">
     </div>
 
     <canvas id="mainCanvas"></canvas>
 
     <div id="hud">
-        <div id="status">// KRONOS: STANDBY</div>
+        <div id="status">// KRONOS: READY_FOR_STREAM</div>
         <div class="row">
             <label for="mem-up" class="btn">LOAD MEMORY</label>
             <input type="file" id="mem-up" accept="video/*,image/*">
@@ -66,7 +74,7 @@
             <button id="vortBtn" class="btn">VORTEX: OFF</button>
         </div>
         <div class="row">
-            <label for="color-picker" class="btn">TINT_CORE</label>
+            <label for="color-picker" class="btn" id="tint-label">TINT_CORE</label>
             <input type="color" id="color-picker" value="#00f3ff">
             
             <button id="micBtn" class="btn">MIC SYNC</button>
@@ -88,19 +96,24 @@
         const vid = document.getElementById('bg-video');
         const img = document.getElementById('bg-image');
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.z = 12;
 
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('mainCanvas'), antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('mainCanvas'), 
+            antialias: true, 
+            alpha: true, // CRITICAL: Allows video to show through
+            premultipliedAlpha: false 
+        });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x000000, 0); // FORCED TRANSPARENCY
+        renderer.setClearColor(0x000000, 0); // Forced 0 opacity background
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.5, 0.4, 0.1);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.2, 0.4, 0.1);
         composer.addPass(bloom);
 
-        const pCount = 1800;
+        const pCount = 2200;
         const hPoints = Array.from({ length: pCount }, () => Array.from({ length: 8 }, () => (Math.random() - 0.5) * 5));
         const geo = new THREE.BufferGeometry();
         const mat = new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending });
@@ -117,12 +130,12 @@
             if (audioCtx.state === 'suspended') await audioCtx.resume();
         }
 
-        function connectSource(source, label) {
+        function routeAudio(source, label) {
             if (prioritySource) prioritySource.disconnect();
             source.connect(analyser);
             source.connect(audioCtx.destination);
             prioritySource = source;
-            document.getElementById('status').innerText = `// ENGINE: ${label}_SYNC`;
+            document.getElementById('status').innerText = `// ENGINE: ${label}_STREAM_ACTIVE`;
         }
 
         document.getElementById('mem-up').onchange = async (e) => {
@@ -130,34 +143,37 @@
             const file = e.target.files[0];
             const url = URL.createObjectURL(file);
             
-            // Reset visuals
+            // FADE OUT CURRENT
             vid.style.opacity = 0; img.style.opacity = 0;
-            vid.style.display = 'none'; img.style.display = 'none';
 
-            if (file.type.startsWith('video')) {
-                vid.style.display = 'block';
-                vid.src = url;
-                vid.muted = false;
-                vid.play();
-                setTimeout(() => vid.style.opacity = 1, 100);
-                const source = audioCtx.createMediaElementSource(vid);
-                connectSource(source, "VIDEO");
-            } else {
-                img.style.display = 'block';
-                img.src = url;
-                setTimeout(() => img.style.opacity = 1, 100);
-                document.getElementById('status').innerText = `// ENGINE: IMAGE_LOAD`;
-            }
+            setTimeout(() => {
+                if (file.type.startsWith('video')) {
+                    img.style.display = 'none';
+                    vid.style.display = 'block';
+                    vid.src = url;
+                    vid.muted = false;
+                    vid.play();
+                    vid.style.opacity = 1;
+                    const source = audioCtx.createMediaElementSource(vid);
+                    routeAudio(source, "VIDEO");
+                } else {
+                    vid.style.display = 'none';
+                    img.style.display = 'block';
+                    img.src = url;
+                    img.style.opacity = 1;
+                    document.getElementById('status').innerText = `// ENGINE: IMAGE_STILL_SYNC`;
+                }
+            }, 500);
         };
 
-        // Interaction
-        const touchStart = (x, y) => { isSling = true; lastPos = { x, y }; initAudio(); };
-        window.addEventListener('mousedown', e => touchStart(e.clientX, e.clientY));
-        window.addEventListener('touchstart', e => touchStart(e.touches[0].clientX, e.touches[0].clientY));
+        // --- INTERACTION ---
+        const handleStart = (x, y) => { isSling = true; lastPos = { x, y }; initAudio(); };
+        window.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
+        window.addEventListener('touchstart', e => handleStart(e.touches[0].clientX, e.touches[0].clientY));
         window.addEventListener('mouseup', () => isSling = false);
         window.addEventListener('touchend', () => isSling = false);
-        window.addEventListener('mousemove', e => { if(isSling){ rotY+=(e.clientX-lastPos.x)*0.01; rotX+=(e.clientY-lastPos.y)*0.01; lastPos={x:e.clientX,y:e.clientY}; }});
-        window.addEventListener('touchmove', e => { if(isSling){ rotY+=(e.touches[0].clientX-lastPos.x)*0.01; rotX+=(e.touches[0].clientY-lastPos.y)*0.01; lastPos={x:e.touches[0].clientX,y:e.touches[0].clientY}; }});
+        window.addEventListener('mousemove', e => { if(isSling){ rotY+=(e.clientX-lastPos.x)*0.012; rotX+=(e.clientY-lastPos.y)*0.012; lastPos={x:e.clientX,y:e.clientY}; }});
+        window.addEventListener('touchmove', e => { if(isSling){ rotY+=(e.touches[0].clientX-lastPos.x)*0.012; rotX+=(e.touches[0].clientY-lastPos.y)*0.012; lastPos={x:e.touches[0].clientX,y:e.touches[0].clientY}; }});
 
         document.getElementById('vortBtn').onclick = (e) => {
             isVortex = !isVortex;
@@ -169,41 +185,48 @@
             requestAnimationFrame(animate);
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
-                let b = dataArray[2]/255;
-                bass += (b - bass) * 0.2; // Smooth decay
-                avg = dataArray[100]/255;
-                bloom.strength = 1.2 + bass * 3.5;
+                let rawBass = dataArray[4]/255;
+                bass += (rawBass - bass) * 0.15; // Weighted reactivity
+                avg = dataArray[120]/255;
+                bloom.strength = 1.0 + bass * 3.8;
             }
 
             const posA = new Float32Array(pCount * 3);
             const colA = new Float32Array(pCount * 3);
 
             hPoints.forEach((p, i) => {
-                let time = performance.now() * 0.0006 * (1 + (i%2 ? bass : avg));
+                // State 1: Stake (Calm Drift)
+                let time = performance.now() * 0.0004 * (1 + (i%2 ? bass : avg));
                 let x = p[0] * Math.cos(time + rotY) - p[1] * Math.sin(time + rotY);
                 let y = p[0] * Math.sin(time + rotY) + p[1] * Math.cos(time + rotY);
                 let z = p[2] * Math.cos(rotX);
 
+                // State 2: Vortex (Spiral)
                 if (isVortex) {
                     let d = Math.sqrt(x*x + y*y);
-                    let vAngle = (bass * 6.0) * (2.2 / (d + 0.5));
+                    let vAngle = (bass * 6.5) * (2.0 / (d + 0.5));
                     let vx = x * Math.cos(vAngle) - y * Math.sin(vAngle);
                     y = x * Math.sin(vAngle) + y * Math.cos(vAngle);
                     x = vx;
                 }
 
-                let s = (isSling ? 1.8 : 1.0) * (1 + bass * 0.4);
+                // State 3: Sling (Touch Expansion)
+                let expand = isSling ? 2.2 : 1.0;
+                const s = (Math.abs(p[5]) * 0.3 + 0.7) * expand * (1 + bass * 0.4);
+                
+                // Final Position Mapping
                 posA[i*3] = x * 4.5 * s; 
                 posA[i*3+1] = y * 4.5 * s; 
                 posA[i*3+2] = (z + p[4]) * 4.5 * s;
 
-                const rgb = hslToRgb(((userHue + bass*50)%360)/360, 0.8, 0.7);
+                // Color Engine
+                const rgb = hslToRgb(((userHue + bass*45)%360)/360, 0.9, 0.75);
                 colA[i*3] = rgb[0]; colA[i*3+1] = rgb[1]; colA[i*3+2] = rgb[2];
             });
 
             geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colA, 3));
-            rotX *= 0.94; rotY *= 0.94;
+            rotX *= 0.93; rotY *= 0.93; // Sling Friction
             composer.render();
         }
 
