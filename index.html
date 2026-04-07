@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HYPERION // INVERSE_ZENITH</title>
     <style>
-        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.75); --pink: #ff0055; }
+        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.8); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
         canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -26,10 +26,10 @@
             color: var(--neon); padding: 14px; border-radius: 10px;
             cursor: pointer; text-transform: uppercase; font-size: 9.5px; font-weight: 800;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: all 0.25s;
+            transition: all 0.25s; text-align: center;
         }
         .btn:hover { background: rgba(0, 243, 255, 0.25); transform: translateY(-1px); }
-        input { display: none; }
+        input[type="file"], input[type="color"] { display: none; }
         .color-preview { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #fff; box-shadow: 0 0 8px #fff; }
         .glitch { color: var(--pink); animation: blink 0.8s step-end infinite; }
         @keyframes blink { 50% { opacity: 0.3; } }
@@ -70,16 +70,18 @@
         let audioCtx, analyser, dataArray, source;
         let bass = 0, avg = 0;
         let globalHue = 190;
+        let backgroundMesh;
 
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000011, 0.03);
+        scene.fog = new THREE.FogExp2(0x000011, 0.02);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
-        camera.position.z = 35;   // pulled back so huge swarm is visible
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+        camera.position.z = 50;
 
         const renderer = new THREE.WebGLRenderer({ 
             canvas: document.getElementById('mainCanvas'), 
-            antialias: true 
+            antialias: true,
+            powerPreference: "high-performance"
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -87,7 +89,7 @@
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
 
-        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.8, 0.6, 0.7);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
         composer.addPass(bloom);
 
         const controls = new OrbitControls(camera, renderer.domElement);
@@ -101,16 +103,11 @@
         const colors = new Float32Array(pointCount * 3);
 
         for (let i = 0; i < pointCount; i++) {
-            hyperPoints.push(Array.from({length: 8}, () => (Math.random() - 0.5) * 6));
-            isMagentaArray[i] = Math.random() > 0.88 ? 1 : 0;
-
-            // Strong initial spread
-            positions[i*3]     = (Math.random() - 0.5) * 50;
-            positions[i*3 + 1] = (Math.random() - 0.5) * 50;
-            positions[i*3 + 2] = (Math.random() - 0.5) * 50;
-
-            // Bright initial color
-            colors[i*3] = 0.95; colors[i*3+1] = 0.98; colors[i*3+2] = 1.0;
+            hyperPoints.push(Array.from({length: 8}, () => (Math.random() - 0.5) * 10));
+            isMagentaArray[i] = Math.random() > 0.9 ? 1 : 0;
+            positions[i*3] = (Math.random() - 0.5) * 100;
+            positions[i*3+1] = (Math.random() - 0.5) * 100;
+            positions[i*3+2] = (Math.random() - 0.5) * 100;
         }
 
         const geometry = new THREE.BufferGeometry();
@@ -118,66 +115,79 @@
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3).setUsage(THREE.DynamicDrawUsage));
 
         const material = new THREE.PointsMaterial({
-            size: 0.28,
+            size: 0.25,
             vertexColors: true,
             transparent: true,
             blending: THREE.AdditiveBlending,
-            depthTest: false
+            depthWrite: false
         });
 
         const swarm = new THREE.Points(geometry, material);
-        swarm.frustumCulled = false;
         scene.add(swarm);
 
-        // Cascade (for extra energy bursts)
-        const maxCascade = 800;
-        let cascadeParticles = [];
-        const cascadeGeo = new THREE.BufferGeometry();
-        const cPosAttr = new THREE.BufferAttribute(new Float32Array(maxCascade * 3), 3);
-        const cColAttr = new THREE.BufferAttribute(new Float32Array(maxCascade * 3), 3);
-        cascadeGeo.setAttribute('position', cPosAttr);
-        cascadeGeo.setAttribute('color', cColAttr);
-        const cascadeMesh = new THREE.Points(cascadeGeo, new THREE.PointsMaterial({ 
-            size: 0.22, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthTest: false 
-        }));
-        scene.add(cascadeMesh);
-
-        function spawnCascade(hue) {
-            if (cascadeParticles.length < maxCascade) {
-                cascadeParticles.push({
-                    pos: new THREE.Vector3((Math.random()-0.5)*45, 25, (Math.random()-0.5)*45),
-                    vel: new THREE.Vector3(0, -0.3 - Math.random()*0.5, (Math.random()-0.5)*0.2),
-                    hue: hue,
-                    life: 1.2
-                });
+        // === BACKGROUND VISUAL CORE ===
+        function setupVisualCore(file) {
+            if (backgroundMesh) {
+                scene.remove(backgroundMesh);
+                backgroundMesh.geometry.dispose();
+                backgroundMesh.material.dispose();
             }
+
+            const url = URL.createObjectURL(file);
+            let texture;
+
+            if (file.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = url;
+                video.loop = true;
+                video.muted = true;
+                video.play();
+                texture = new THREE.VideoTexture(video);
+            } else {
+                texture = new THREE.TextureLoader().load(url);
+            }
+
+            const bgGeo = new THREE.PlaneGeometry(160, 90);
+            const bgMat = new THREE.MeshBasicMaterial({ 
+                map: texture, 
+                transparent: true, 
+                opacity: 0.4, 
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide
+            });
+            backgroundMesh = new THREE.Mesh(bgGeo, bgMat);
+            backgroundMesh.position.z = -50;
+            scene.add(backgroundMesh);
+            
+            document.getElementById('sync-status').textContent = "VISUAL_CORE_ACTIVE";
         }
 
+        document.getElementById('visual-upload').onchange = (e) => {
+            if (e.target.files[0]) setupVisualCore(e.target.files[0]);
+        };
+
+        // === AUDIO CORE ===
         async function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 256;
+                analyser.fftSize = 512;
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
             }
             if (audioCtx.state === 'suspended') await audioCtx.resume();
         }
 
         document.getElementById('mic-btn').onclick = async () => {
-            const status = document.getElementById('sync-status');
+            await initAudio();
             try {
-                await initAudio();
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 if (source) source.disconnect();
                 source = audioCtx.createMediaStreamSource(stream);
                 source.connect(analyser);
-                await audioCtx.resume();
-                status.textContent = "MIC_ACTIVE — LISTENING";
-                status.classList.remove('glitch');
+                document.getElementById('sync-status').textContent = "MIC_LIVE";
+                document.getElementById('sync-status').classList.remove('glitch');
             } catch (err) {
-                console.error(err);
-                status.textContent = err.name === "NotAllowedError" ? "MIC_DENIED" : "MIC_ERROR";
-                status.classList.add('glitch');
+                document.getElementById('sync-status').textContent = "MIC_ERR";
             }
         };
 
@@ -185,92 +195,80 @@
             await initAudio();
             const url = URL.createObjectURL(e.target.files[0]);
             const audio = new Audio(url);
+            audio.crossOrigin = "anonymous";
             audio.play();
             if (source) source.disconnect();
             source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
             source.connect(audioCtx.destination);
-            document.getElementById('sync-status').textContent = "AUDIO_CORE_LOADED";
+            document.getElementById('sync-status').textContent = "CORE_SYNC_OK";
             document.getElementById('sync-status').classList.remove('glitch');
         };
 
+        // === UTILS ===
         document.getElementById('color-picker').oninput = (e) => {
-            document.getElementById('preview').style.background = e.target.value;
-            globalHue = rgbToHue(...hexToRgb(e.target.value));
-        };
-
-        function hexToRgb(hex) {
-            const r = parseInt(hex.slice(1,3),16);
-            const g = parseInt(hex.slice(3,5),16);
-            const b = parseInt(hex.slice(5,7),16);
-            return [r,g,b];
-        }
-
-        function rgbToHue(r, g, b) {
-            r /= 255; g /= 255; b /= 255;
+            const hex = e.target.value;
+            document.getElementById('preview').style.background = hex;
+            const r = parseInt(hex.slice(1,3),16)/255;
+            const g = parseInt(hex.slice(3,5),16)/255;
+            const b = parseInt(hex.slice(5,7),16)/255;
+            // Simplified Hue calc
             const max = Math.max(r,g,b), min = Math.min(r,g,b);
-            if (max === min) return 0;
-            let h = max === r ? (g-b)/(max-min)*60 :
-                    max === g ? (b-r)/(max-min)*60 + 120 : (r-g)/(max-min)*60 + 240;
-            return (h + 360) % 360;
-        }
+            let h = 0;
+            if (max !== min) {
+                if (max === r) h = (g-b)/(max-min);
+                else if (max === g) h = 2 + (b-r)/(max-min);
+                else h = 4 + (r-g)/(max-min);
+            }
+            globalHue = h * 60;
+        };
 
         function hslToRgb(h, s, l) {
             h /= 360; s /= 100; l /= 100;
             let r, g, b;
-            if (s === 0) r = g = b = l;
-            else {
-                const hue2rgb = (p, q, t) => {
-                    if (t < 0) t += 1; if (t > 1) t -= 1;
-                    if (t < 1/6) return p + (q-p)*6*t;
-                    if (t < 1/2) return q;
-                    if (t < 2/3) return p + (q-p)*(2/3-t)*6;
-                    return p;
-                };
-                const q = l < 0.5 ? l*(1+s) : l + s - l*s;
-                const p = 2*l - q;
-                r = hue2rgb(p,q,h+1/3);
-                g = hue2rgb(p,q,h);
-                b = hue2rgb(p,q,h-1/3);
-            }
-            return [r,g,b];
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            const f = (t) => {
+                if (t < 0) t += 1; if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+            return [f(h + 1/3), f(h), f(h - 1/3)];
         }
 
         let time = 0;
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.016;
+            time += 0.005;
 
             if (analyser) {
                 analyser.getByteFrequencyData(dataArray);
-                bass = Math.max(dataArray[2] || 0, dataArray[3] || 0) / 255;
-                avg = (dataArray[10] || 0) / 255 * 0.7;
-
-                bloom.strength = 1.6 + bass * 4.5;
-                if (bass > 0.65) {
-                    for (let i = 0; i < 3; i++) spawnCascade(globalHue);   // more trails on strong beats
-                }
+                bass = dataArray[2] / 255;
+                avg = (dataArray[20] / 255) * 0.5;
+                bloom.strength = 1.2 + bass * 3.0;
             }
 
-            // Update 100k swarm with audio reaction
             const posAttr = geometry.attributes.position.array;
             const colAttr = geometry.attributes.color.array;
 
             for (let i = 0; i < pointCount; i++) {
                 const p = hyperPoints[i];
-                const rot = time * (0.8 + avg * 2.2);
+                const rot = time * (0.5 + avg);
+                
+                // 8D Projection simulation
+                const x = p[0] * Math.cos(rot) - p[1] * Math.sin(rot);
+                const y = p[2] * Math.sin(rot * 0.5) + p[3] * Math.cos(rot);
+                const z = p[4] * Math.cos(rot * 1.2);
 
-                const x = p[0] * Math.cos(rot) - p[1] * Math.sin(rot * 0.8);
-                const y = p[2] * Math.cos(rot * 0.6) - p[3] * Math.sin(rot * 1.1);
-                const z = p[4] * Math.sin(rot * 1.4);
+                const scale = 8 + (bass * 25);
+                posAttr[i*3] = x * scale;
+                posAttr[i*3+1] = y * scale;
+                posAttr[i*3+2] = z * scale;
 
-                const scale = 6 + bass * 14;   // strong dance on bass
-                posAttr[i*3]     = x * scale;
-                posAttr[i*3 + 1] = y * scale;
-                posAttr[i*3 + 2] = z * scale;
-
-                const shift = isMagentaArray[i] ? 62 : 0;
-                const rgb = hslToRgb((globalHue + shift) % 360, 88, 72);
+                const hShift = isMagentaArray[i] ? 40 : 0;
+                const rgb = hslToRgb((globalHue + hShift) % 360, 90, 70);
                 colAttr[i*3] = rgb[0];
                 colAttr[i*3+1] = rgb[1];
                 colAttr[i*3+2] = rgb[2];
@@ -278,31 +276,9 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            // Cascade update
-            let active = 0;
-            for (let i = cascadeParticles.length - 1; i >= 0; i--) {
-                const p = cascadeParticles[i];
-                p.pos.add(p.vel);
-                p.life -= 0.014;
-                if (p.life <= 0 || p.pos.y < -30) {
-                    cascadeParticles.splice(i, 1);
-                    continue;
-                }
-                cPosAttr.array[active*3]     = p.pos.x;
-                cPosAttr.array[active*3 + 1] = p.pos.y;
-                cPosAttr.array[active*3 + 2] = p.pos.z;
-
-                const rgb = hslToRgb(p.hue, 95, 70);
-                cColAttr.array[active*3]     = rgb[0] * p.life;
-                cColAttr.array[active*3 + 1] = rgb[1] * p.life;
-                cColAttr.array[active*3 + 2] = rgb[2] * p.life;
-                active++;
+            if (backgroundMesh && bass > 0.7) {
+                backgroundMesh.scale.setScalar(1 + bass * 0.1);
             }
-            for (let i = active; i < maxCascade; i++) {
-                cPosAttr.array[i*3 + 1] = -300;
-            }
-            cPosAttr.needsUpdate = true;
-            cColAttr.needsUpdate = true;
 
             controls.update();
             composer.render();
