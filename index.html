@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HYPERION // INVERSE_ZENITH</title>
+    <title>OLYMPUS // HYPERION // INVERSE_ZENITH</title>
     <style>
-        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.8); --pink: #ff0055; }
+        :root { --neon: #00f3ff; --glass: rgba(0, 0, 0, 0.85); --pink: #ff0055; }
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
         body { background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Courier New', monospace; }
         canvas#mainCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -16,23 +16,23 @@
         }
         #controls {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 95%; max-width: 540px; z-index: 100;
-            background: var(--glass); padding: 18px; border-radius: 16px;
-            border: 1px solid rgba(0, 243, 255, 0.35); backdrop-filter: blur(20px);
+            width: 95%; max-width: 580px; z-index: 100;
+            background: var(--glass); padding: 20px; border-radius: 12px;
+            border: 1px solid rgba(0, 243, 255, 0.3); backdrop-filter: blur(25px);
             display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
         }
         .btn, .color-container {
-            background: rgba(15, 15, 15, 0.85); border: 1px solid rgba(0, 243, 255, 0.45);
-            color: var(--neon); padding: 14px; border-radius: 10px;
-            cursor: pointer; text-transform: uppercase; font-size: 9.5px; font-weight: 800;
+            background: rgba(10, 10, 10, 0.9); border: 1px solid rgba(0, 243, 255, 0.4);
+            color: var(--neon); padding: 14px; border-radius: 8px;
+            cursor: pointer; text-transform: uppercase; font-size: 10px; font-weight: 800;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: all 0.25s; text-align: center;
+            transition: all 0.2s ease;
         }
-        .btn:hover { background: rgba(0, 243, 255, 0.25); transform: translateY(-1px); }
+        .btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
         input[type="file"], input[type="color"] { display: none; }
-        .color-preview { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #fff; box-shadow: 0 0 8px #fff; }
+        .color-preview { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #fff; }
         .glitch { color: var(--pink); animation: blink 0.8s step-end infinite; }
-        @keyframes blink { 50% { opacity: 0.3; } }
+        @keyframes blink { 50% { opacity: 0.2; } }
     </style>
 </head>
 <body>
@@ -40,9 +40,9 @@
     <canvas id="mainCanvas"></canvas>
 
     <div id="ui">
-        // HYPERION // INVERSE_ZENITH<br>
-        // STATUS: <span id="sync-status" class="glitch">AWAITING CORE</span><br>
-        // ARCH: VISUAL_BEHIND_8D_SLING
+        // PROJECT_OLYMPUS // HYPERION<br>
+        // STATUS: <span id="sync-status" class="glitch">CORE_OFFLINE</span><br>
+        // ENGINE: 8D_SLING_PROJECTION_V2
     </div>
 
     <div id="controls">
@@ -67,47 +67,41 @@
         import { RenderPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 
-        let audioCtx, analyser, dataArray, source;
-        let bass = 0, avg = 0;
+        let audioCtx, analyser, dataArray, source, currentAudio;
+        let bass = 0, mid = 0, avg = 0;
         let globalHue = 190;
-        let backgroundMesh;
+        let backgroundMesh, currentBlobUrl;
 
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000011, 0.02);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
-        camera.position.z = 50;
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 60;
 
         const renderer = new THREE.WebGLRenderer({ 
             canvas: document.getElementById('mainCanvas'), 
-            antialias: true,
-            powerPreference: "high-performance"
+            antialias: true 
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-
         const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
         composer.addPass(bloom);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
 
-        // === 100,000 STAR POINTS ===
+        // === 100k POINT CLOUD (8D DATA STORAGE) ===
         const pointCount = 100000;
-        const hyperPoints = [];
-        const isMagentaArray = new Uint8Array(pointCount);
+        const hyperPoints = new Float32Array(pointCount * 8); 
         const positions = new Float32Array(pointCount * 3);
         const colors = new Float32Array(pointCount * 3);
 
         for (let i = 0; i < pointCount; i++) {
-            hyperPoints.push(Array.from({length: 8}, () => (Math.random() - 0.5) * 10));
-            isMagentaArray[i] = Math.random() > 0.9 ? 1 : 0;
-            positions[i*3] = (Math.random() - 0.5) * 100;
-            positions[i*3+1] = (Math.random() - 0.5) * 100;
-            positions[i*3+2] = (Math.random() - 0.5) * 100;
+            for(let j=0; j<8; j++) hyperPoints[i*8+j] = (Math.random() - 0.5) * 12;
+            positions[i*3] = (Math.random() - 0.5) * 200;
+            positions[i*3+1] = (Math.random() - 0.5) * 200;
+            positions[i*3+2] = (Math.random() - 0.5) * 200;
         }
 
         const geometry = new THREE.BufferGeometry();
@@ -115,7 +109,7 @@
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3).setUsage(THREE.DynamicDrawUsage));
 
         const material = new THREE.PointsMaterial({
-            size: 0.25,
+            size: 0.3,
             vertexColors: true,
             transparent: true,
             blending: THREE.AdditiveBlending,
@@ -125,48 +119,60 @@
         const swarm = new THREE.Points(geometry, material);
         scene.add(swarm);
 
-        // === BACKGROUND VISUAL CORE ===
-        function setupVisualCore(file) {
+        // === CLEANUP & DISPOSAL ===
+        function disposeVisualCore() {
+            if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
             if (backgroundMesh) {
                 scene.remove(backgroundMesh);
                 backgroundMesh.geometry.dispose();
+                backgroundMesh.material.map?.dispose();
                 backgroundMesh.material.dispose();
             }
+        }
 
-            const url = URL.createObjectURL(file);
-            let texture;
+        // === VISUAL CORE LOAD ===
+        function setupVisualCore(file) {
+            disposeVisualCore();
+            currentBlobUrl = URL.createObjectURL(file);
+            
+            const loader = file.type.startsWith('video/') ? null : new THREE.TextureLoader();
+            
+            const handleTexture = (texture) => {
+                const aspect = texture.image.videoWidth ? 
+                               texture.image.videoWidth / texture.image.videoHeight : 
+                               texture.image.width / texture.image.height;
+                
+                const bgGeo = new THREE.PlaneGeometry(160 * aspect, 160);
+                const bgMat = new THREE.MeshBasicMaterial({ 
+                    map: texture, 
+                    transparent: true, 
+                    opacity: 0.35, 
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide
+                });
+                backgroundMesh = new THREE.Mesh(bgGeo, bgMat);
+                backgroundMesh.position.z = -80;
+                scene.add(backgroundMesh);
+                document.getElementById('sync-status').textContent = "VISUAL_CORE_ACTIVE";
+            };
 
             if (file.type.startsWith('video/')) {
                 const video = document.createElement('video');
-                video.src = url;
+                video.src = currentBlobUrl;
                 video.loop = true;
                 video.muted = true;
                 video.play();
-                texture = new THREE.VideoTexture(video);
+                video.onloadedmetadata = () => handleTexture(new THREE.VideoTexture(video));
             } else {
-                texture = new THREE.TextureLoader().load(url);
+                loader.load(currentBlobUrl, handleTexture);
             }
-
-            const bgGeo = new THREE.PlaneGeometry(160, 90);
-            const bgMat = new THREE.MeshBasicMaterial({ 
-                map: texture, 
-                transparent: true, 
-                opacity: 0.4, 
-                blending: THREE.AdditiveBlending,
-                side: THREE.DoubleSide
-            });
-            backgroundMesh = new THREE.Mesh(bgGeo, bgMat);
-            backgroundMesh.position.z = -50;
-            scene.add(backgroundMesh);
-            
-            document.getElementById('sync-status').textContent = "VISUAL_CORE_ACTIVE";
         }
 
         document.getElementById('visual-upload').onchange = (e) => {
             if (e.target.files[0]) setupVisualCore(e.target.files[0]);
         };
 
-        // === AUDIO CORE ===
+        // === AUDIO CORE LOAD ===
         async function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -177,55 +183,82 @@
             if (audioCtx.state === 'suspended') await audioCtx.resume();
         }
 
+        document.getElementById('audio-upload').onchange = async (e) => {
+            await initAudio();
+            if (currentAudio) currentAudio.pause();
+            
+            const url = URL.createObjectURL(e.target.files[0]);
+            currentAudio = new Audio(url);
+            currentAudio.play();
+            
+            if (source) source.disconnect();
+            source = audioCtx.createMediaElementSource(currentAudio);
+            source.connect(analyser);
+            source.connect(audioCtx.destination);
+            document.getElementById('sync-status').textContent = "AUDIO_CORE_SYNC";
+            document.getElementById('sync-status').classList.remove('glitch');
+        };
+
         document.getElementById('mic-btn').onclick = async () => {
             await initAudio();
+            if (currentAudio) currentAudio.pause();
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 if (source) source.disconnect();
                 source = audioCtx.createMediaStreamSource(stream);
                 source.connect(analyser);
-                document.getElementById('sync-status').textContent = "MIC_LIVE";
+                document.getElementById('sync-status').textContent = "MIC_LINK_ACTIVE";
                 document.getElementById('sync-status').classList.remove('glitch');
-            } catch (err) {
-                document.getElementById('sync-status').textContent = "MIC_ERR";
-            }
+            } catch (err) { alert("Mic Access Denied"); }
         };
 
-        document.getElementById('audio-upload').onchange = async (e) => {
-            await initAudio();
-            const url = URL.createObjectURL(e.target.files[0]);
-            const audio = new Audio(url);
-            audio.crossOrigin = "anonymous";
-            audio.play();
-            if (source) source.disconnect();
-            source = audioCtx.createMediaElementSource(audio);
-            source.connect(analyser);
-            source.connect(audioCtx.destination);
-            document.getElementById('sync-status').textContent = "CORE_SYNC_OK";
-            document.getElementById('sync-status').classList.remove('glitch');
-        };
+        // === RENDER LOOP ===
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.005;
 
-        // === UTILS ===
-        document.getElementById('color-picker').oninput = (e) => {
-            const hex = e.target.value;
-            document.getElementById('preview').style.background = hex;
-            const r = parseInt(hex.slice(1,3),16)/255;
-            const g = parseInt(hex.slice(3,5),16)/255;
-            const b = parseInt(hex.slice(5,7),16)/255;
-            // Simplified Hue calc
-            const max = Math.max(r,g,b), min = Math.min(r,g,b);
-            let h = 0;
-            if (max !== min) {
-                if (max === r) h = (g-b)/(max-min);
-                else if (max === g) h = 2 + (b-r)/(max-min);
-                else h = 4 + (r-g)/(max-min);
+            if (analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                bass = dataArray[2] / 255;
+                mid = dataArray[20] / 255;
+                bloom.strength = 1.0 + (bass * 2.5);
             }
-            globalHue = h * 60;
-        };
+
+            const posArr = geometry.attributes.position.array;
+            const colArr = geometry.attributes.color.array;
+
+            for (let i = 0; i < pointCount; i++) {
+                const idx = i * 8;
+                const rot = time * (0.4 + mid);
+                
+                // 8D Projection simulation using all indices
+                const x = hyperPoints[idx] * Math.cos(rot) - hyperPoints[idx+1] * Math.sin(rot);
+                const y = hyperPoints[idx+2] * Math.sin(rot * 0.8) + hyperPoints[idx+3] * Math.cos(rot * 1.1);
+                const z = (hyperPoints[idx+4] + hyperPoints[idx+5]) * Math.sin(rot * 0.5);
+                const w = (hyperPoints[idx+6] + hyperPoints[idx+7]) * 0.1;
+
+                const s = 10 + (bass * 35) + (w * 5);
+                posArr[i*3] = x * s;
+                posArr[i*3+1] = y * s;
+                posArr[i*3+2] = z * s;
+
+                // Color based on W-dimension and global hue
+                const h = (globalHue + (w * 50)) % 360;
+                const rgb = hslToRgb(h, 90, 70);
+                colArr[i*3] = rgb[0];
+                colArr[i*3+1] = rgb[1];
+                colArr[i*3+2] = rgb[2];
+            }
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+
+            controls.update();
+            composer.render();
+        }
 
         function hslToRgb(h, s, l) {
             h /= 360; s /= 100; l /= 100;
-            let r, g, b;
             const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
             const p = 2 * l - q;
             const f = (t) => {
@@ -238,51 +271,23 @@
             return [f(h + 1/3), f(h), f(h - 1/3)];
         }
 
-        let time = 0;
-        function animate() {
-            requestAnimationFrame(animate);
-            time += 0.005;
-
-            if (analyser) {
-                analyser.getByteFrequencyData(dataArray);
-                bass = dataArray[2] / 255;
-                avg = (dataArray[20] / 255) * 0.5;
-                bloom.strength = 1.2 + bass * 3.0;
+        document.getElementById('color-picker').oninput = (e) => {
+            const hex = e.target.value;
+            document.getElementById('preview').style.background = hex;
+            const r = parseInt(hex.slice(1,3),16);
+            const g = parseInt(hex.slice(3,5),16);
+            const b = parseInt(hex.slice(5,7),16);
+            // Quick H conversion for the loop
+            let r_ = r/255, g_ = g/255, b_ = b/255;
+            let max = Math.max(r_, g_, b_), min = Math.min(r_, g_, b_);
+            let h = 0;
+            if(max !== min){
+                if(max === r_) h = (g_-b_)/(max-min);
+                else if(max === g_) h = 2 + (b_-r_)/(max-min);
+                else h = 4 + (r_-g_)/(max-min);
             }
-
-            const posAttr = geometry.attributes.position.array;
-            const colAttr = geometry.attributes.color.array;
-
-            for (let i = 0; i < pointCount; i++) {
-                const p = hyperPoints[i];
-                const rot = time * (0.5 + avg);
-                
-                // 8D Projection simulation
-                const x = p[0] * Math.cos(rot) - p[1] * Math.sin(rot);
-                const y = p[2] * Math.sin(rot * 0.5) + p[3] * Math.cos(rot);
-                const z = p[4] * Math.cos(rot * 1.2);
-
-                const scale = 8 + (bass * 25);
-                posAttr[i*3] = x * scale;
-                posAttr[i*3+1] = y * scale;
-                posAttr[i*3+2] = z * scale;
-
-                const hShift = isMagentaArray[i] ? 40 : 0;
-                const rgb = hslToRgb((globalHue + hShift) % 360, 90, 70);
-                colAttr[i*3] = rgb[0];
-                colAttr[i*3+1] = rgb[1];
-                colAttr[i*3+2] = rgb[2];
-            }
-            geometry.attributes.position.needsUpdate = true;
-            geometry.attributes.color.needsUpdate = true;
-
-            if (backgroundMesh && bass > 0.7) {
-                backgroundMesh.scale.setScalar(1 + bass * 0.1);
-            }
-
-            controls.update();
-            composer.render();
-        }
+            globalHue = h * 60;
+        };
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
